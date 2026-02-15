@@ -30,7 +30,7 @@ const AdminDashboard = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5001/api/auth/users", { withCredentials: true });
+      const res = await axios.get("https://alumni-meet-2-0.onrender.com/api/auth/users", { withCredentials: true });
       setStudents(res.data.data);
     } catch (err) {
       console.error("Fetch error:", err);
