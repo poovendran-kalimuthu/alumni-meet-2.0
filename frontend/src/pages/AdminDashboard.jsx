@@ -95,7 +95,7 @@ const AdminDashboard = () => {
   const updateAttendance = async (studentId, newStatus) => {
     try {
       await axios.patch(
-        `http://localhost:5001/api/auth/users/${studentId}/attendance`,
+        `https://alumni-meet-2-0.onrender.com/api/auth/users/${studentId}/attendance`,
         { hasAttended: newStatus === "present" },
         { withCredentials: true }
       );

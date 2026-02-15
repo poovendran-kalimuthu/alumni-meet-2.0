@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 app.use(cors({
     
-    origin: true,   
+    origin: "https://alumni-meet-2-0.vercel.app",   
     credentials: true
 
 }));

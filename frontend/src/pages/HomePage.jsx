@@ -134,38 +134,7 @@ const HomePage = () => {
 
 
   // Validate location with backend API
-  const validateLocationWithBackend = async (locationData) => {
-    try {
-      // Replace with your actual backend endpoint
-      const response = await fetch('https://your-backend-api.com/validate-location', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Add auth if needed
-        },
-        body: JSON.stringify(locationData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Backend validation failed');
-      }
-
-      const result = await response.json();
-      return result.isValid; // Backend should return { isValid: true/false }
-
-    } catch (error) {
-      console.error('Backend validation error:', error);
-      // Fallback to frontend calculation if backend fails
-      const distance = calculateDistance(
-        locationData.userLat,
-        locationData.userLng,
-        locationData.eventLat,
-        locationData.eventLng
-      );
-      return distance <= locationData.maxDistance;
-    }
-  };
-
+  
   // Handle form submission
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -194,7 +163,7 @@ const HomePage = () => {
       }
     };
 
-    const response = await fetch('http://localhost:5001/api/auth/attendance', {
+    const response = await fetch('https://alumni-meet-2-0.onrender.com/api/auth/attendance', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
