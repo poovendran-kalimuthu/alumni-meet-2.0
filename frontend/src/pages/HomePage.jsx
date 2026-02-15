@@ -16,7 +16,7 @@ const HomePage = () => {
 
   // Event location coordinates
   const EVENT_LOCATION = {
-    lat:10.650268,
+    lat: 10.650268,
     lng: 77.032191
   };
 
@@ -29,7 +29,6 @@ const HomePage = () => {
     rollNo: authUser.rollNo,
     className: authUser.className
   };
-  console.log(authUser);
 
   // Simulate initial loading
   useEffect(() => {
@@ -59,134 +58,157 @@ const HomePage = () => {
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported by your browser'));
+        reject(new Error("Geolocation not supported"));
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+
+          // Reject very low accuracy results (indoors GPS noise)
+          if (accuracy > 100) {
+            reject(new Error("Low GPS accuracy. Move near window or go outside."));
+            return;
+          }
+
           resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            lat: latitude,
+            lng: longitude,
+            accuracy
           });
         },
         (error) => {
-          reject(error);
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              reject(new Error("Location permission denied"));
+              break;
+            case error.TIMEOUT:
+              reject(new Error("Location request timed out"));
+              break;
+            default:
+              reject(new Error("Unable to fetch location"));
+          }
         },
         {
           enableHighAccuracy: true,
-          timeout: 8000,
+          timeout: 20000,     // 🔥 increased
           maximumAge: 0
         }
       );
     });
   };
 
+
   // Verify location and validate with backend
   const verifyLocation = async () => {
-    setLocationStatus('checking');
+    if (locationStatus === "checking") return;
+
+    setLocationStatus("checking");
     setLocationDetails(null);
 
-    try {
-      const location = await getCurrentLocation();
+    const attemptLocation = async (retry = 0) => {
+      try {
+        const location = await getCurrentLocation();
 
-      const distance = calculateDistance(
-        location.lat,
-        location.lng,
-        EVENT_LOCATION.lat,
-        EVENT_LOCATION.lng
-      );
+        const distance = calculateDistance(
+          location.lat,
+          location.lng,
+          EVENT_LOCATION.lat,
+          EVENT_LOCATION.lng
+        );
 
-      setUserLocation({
-        lat: location.lat,
-        lng: location.lng
-      });
+        setUserLocation(location);
+        setDistanceFromVenue(distance);
 
-      setDistanceFromVenue(distance);
+        if (distance <= PREMISES_RADIUS) {
+          setLocationStatus("verified");
+          setLocationDetails({
+            coordinates: `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
+            distance: `${distance.toFixed(0)} meters`,
+            withinRadius: "Yes ✓"
+          });
+        } else {
+          setLocationStatus("not-verified");
+          setLocationDetails({
+            coordinates: `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
+            distance: `${distance.toFixed(0)} meters`,
+            withinRadius: "No ✗",
+            errorMessage: `You are ${distance.toFixed(0)}m away from venue`
+          });
+        }
 
-      // Only frontend validation
-      if (distance <= PREMISES_RADIUS) {
-        setLocationStatus('verified');
-        setLocationDetails({
-          coordinates: `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
-          distance: `${distance.toFixed(0)} meters`,
-          withinRadius: 'Yes ✓'
-        });
-      } else {
-        setLocationStatus('not-verified');
-        setLocationDetails({
-          coordinates: `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
-          distance: `${distance.toFixed(0)} meters`,
-          withinRadius: 'No ✗',
-          errorMessage: `You are ${distance.toFixed(0)}m away from venue`
-        });
-      }
-
-    } catch (error) {
-      console.error('Location error:', error);
-      setLocationStatus('not-verified');
-      setLocationDetails({
-        errorMessage: 'Unable to access location'
-      });
-    }
-  };
-
-
-  // Validate location with backend API
-  
-  // Handle form submission
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (locationStatus !== 'verified') {
-    alert('Please verify your location first');
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    const payload = {
-      studentId: authUser._id,   // or rollNo
-      event: "Alumni Meet - 2026",
-      userLocation: {
-        lat: userLocation.lat,
-        lng: userLocation.lng
-      },
-      eventLocation: EVENT_LOCATION,
-      radius: PREMISES_RADIUS,
-      studentInfo: {
-        name: studentInfo.name,
-        rollNo: studentInfo.rollNo,
-        className: studentInfo.className
+      } catch (err) {
+        if (retry < 2) {
+          setTimeout(() => attemptLocation(retry + 1), 2500); // 🔥 auto retry
+        } else {
+          setLocationStatus("not-verified");
+          setLocationDetails({
+            errorMessage: err.message
+          });
+        }
       }
     };
 
-    const response = await fetch('https://alumni-meet-2-0.onrender.com/api/auth/attendance', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify(payload)
-    });
+    attemptLocation();
+  };
 
-    const result = await response.json();
 
-    if (!response.ok) {
-      throw new Error(result.message || "Attendance failed");
+
+  // Validate location with backend API
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (locationStatus !== 'verified') {
+      alert('Please verify your location first');
+      return;
     }
 
-    toast.success("Attendance Posted Successfully")
+    setIsSubmitting(true);
 
-  } catch (error) {
-    console.error(error);
-    alert(error.message || "❌ Attendance failed");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    try {
+      const payload = {
+        studentId: authUser._id,   // or rollNo
+        event: "Alumni Meet - 2026",
+        userLocation: {
+          lat: userLocation.lat,
+          lng: userLocation.lng
+        },
+        eventLocation: EVENT_LOCATION,
+        radius: PREMISES_RADIUS,
+        studentInfo: {
+          name: studentInfo.name,
+          rollNo: studentInfo.rollNo,
+          className: studentInfo.className
+        }
+      };
+
+      const response = await fetch('https://alumni-meet-2-0.onrender.com/api/auth/attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Attendance failed");
+      }
+
+      toast.success("Attendance Posted Successfully")
+
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "❌ Attendance failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   // Skeleton loader component
@@ -320,8 +342,8 @@ const HomePage = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className={`p-2 rounded-lg ${locationStatus === 'verified' ? 'bg-green-100' :
-                      locationStatus === 'not-verified' ? 'bg-red-100' :
-                        locationStatus === 'checking' ? 'bg-yellow-100' : 'bg-slate-100'
+                    locationStatus === 'not-verified' ? 'bg-red-100' :
+                      locationStatus === 'checking' ? 'bg-yellow-100' : 'bg-slate-100'
                     }`}>
                     {locationStatus === 'verified' ? (
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -347,8 +369,8 @@ const HomePage = () => {
                       Location Status
                     </h4>
                     <p className={`text-xs font-secondary ${locationStatus === 'verified' ? 'text-green-600' :
-                        locationStatus === 'not-verified' ? 'text-red-600' :
-                          locationStatus === 'checking' ? 'text-yellow-600' : 'text-slate-500'
+                      locationStatus === 'not-verified' ? 'text-red-600' :
+                        locationStatus === 'checking' ? 'text-yellow-600' : 'text-slate-500'
                       }`}>
                       {locationStatus === 'verified' ? 'You are within the event premises' :
                         locationStatus === 'not-verified' ? (locationDetails?.errorMessage || 'Tap to verify your location') :
@@ -360,8 +382,8 @@ const HomePage = () => {
 
                 {/* Status Badge */}
                 <div className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${locationStatus === 'verified' ? 'bg-green-100 text-green-700' :
-                    locationStatus === 'not-verified' ? 'bg-red-100 text-red-700' :
-                      locationStatus === 'checking' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700'
+                  locationStatus === 'not-verified' ? 'bg-red-100 text-red-700' :
+                    locationStatus === 'checking' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700'
                   }`}>
                   {locationStatus === 'verified' ? 'Verified' :
                     locationStatus === 'not-verified' ? 'Not Verified' :
@@ -392,10 +414,10 @@ const HomePage = () => {
                 onClick={verifyLocation}
                 disabled={locationStatus === 'checking'}
                 className={`w-full py-3 text-white font-semibold rounded-xl transition-all text-sm font-primary flex items-center justify-center gap-2 ${locationStatus === 'verified'
-                    ? 'bg-green-100 text-green-700 border border-green-300 cursor-default'
-                    : locationStatus === 'not-verified'
-                      ? 'bg-red-100 text-red-700 border border-red-300 hover:bg-red-200'
-                      : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'
+                  ? 'bg-green-100 text-green-700 border border-green-300 cursor-default'
+                  : locationStatus === 'not-verified'
+                    ? 'bg-red-100 text-red-700 border border-red-300 hover:bg-red-200'
+                    : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'
                   } ${locationStatus === 'checking' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {locationStatus === 'verified' ? (
@@ -454,8 +476,8 @@ const HomePage = () => {
             type="submit"
             disabled={locationStatus !== 'verified' || isSubmitting}
             className={`w-full py-3.5 mt-2 font-bold rounded-xl transition-all text-base font-primary ${locationStatus === 'verified'
-                ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-md shadow-blue-200'
-                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-md shadow-blue-200'
+              : 'bg-gray-300 text-gray-600 cursor-not-allowed'
               } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {isSubmitting ? (
