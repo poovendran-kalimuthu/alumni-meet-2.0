@@ -21,7 +21,7 @@ const HomePage = () => {
   };
 
   // Premises radius in meters
-  const PREMISES_RADIUS = 200;
+  const PREMISES_RADIUS = 300;
 
   // Student information (would typically come from props or API)
   const studentInfo = {
