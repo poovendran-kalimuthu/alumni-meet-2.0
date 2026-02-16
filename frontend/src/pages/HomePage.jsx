@@ -158,7 +158,7 @@ const HomePage = () => {
             accuracy: location.accuracy ? `${location.accuracy.toFixed(0)} meters` : 'N/A',
             withinRadius: "Yes ✓"
           });
-          toast.success("✅ Location verified! You can now post attendance.", {
+          toast.success("Location verified! You can now post attendance.", {
             position: "top-center",
             autoClose: 3000,
           });
@@ -171,7 +171,7 @@ const HomePage = () => {
             withinRadius: "No ✗",
             errorMessage: `You are ${distance.toFixed(0)}m away from venue. Required: within ${PREMISES_RADIUS}m`
           });
-          toast.error(`❌ You're too far from the venue (${distance.toFixed(0)}m away)`, {
+          toast.error(`You're too far from the venue (${distance.toFixed(0)}m away)`, {
             position: "top-center",
             autoClose: 4000,
           });
@@ -258,7 +258,7 @@ const HomePage = () => {
         throw new Error(result.message || "Attendance posting failed");
       }
 
-      toast.success("✅ Attendance Posted Successfully!", {
+      toast.success("Attendance Posted Successfully!", {
         position: "top-center",
         autoClose: 5000,
         onClose: () => {
