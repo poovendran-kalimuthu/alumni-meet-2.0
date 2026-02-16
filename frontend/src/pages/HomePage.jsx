@@ -1,7 +1,7 @@
 // HomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
-import { ToastContainer, toast } from 'react-toastify';
+import toast from "react-hot-toast";
 import 'react-toastify/dist/ReactToastify.css';
 
 const HomePage = () => {
@@ -325,19 +325,7 @@ const HomePage = () => {
 
   return (
     <>
-      <ToastContainer
-        position="top-center"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        className="text-xs sm:text-sm"
-      />
+     
       
       <div className="flex items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="glass-card w-full max-w-[360px] sm:max-w-md rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 bg-white/80 backdrop-blur-lg shadow-xl transition-all duration-300 hover:shadow-2xl">
