@@ -241,9 +241,7 @@ const HomePage = () => {
 
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       
-      if (!token) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
+      
 
       const response = await fetch('https://alumni-meet-2-0.onrender.com/api/auth/attendance', {
         method: 'POST',
