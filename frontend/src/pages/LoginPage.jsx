@@ -21,7 +21,7 @@ const Login = () => {
       ...prevState,
       [name]: value
     }));
-    
+
     // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -33,26 +33,26 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.rollNo.trim()) {
       newErrors.rollNo = 'Roll number is required';
     } else if (formData.rollNo.length < 3) {
       newErrors.rollNo = 'Roll number must be at least 3 characters';
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 4) {
       newErrors.password = 'Password must be at least 4 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form before submission
     if (!validateForm()) {
       toast.error('Please fix the errors in the form', {
@@ -63,16 +63,9 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
-      // Call the login function from your store
       await login(formData);
-      
-      // Success toast will be shown by your store/API response
-      toast.success('Login successful! Redirecting...', {
-        position: "top-center",
-        autoClose: 2000,
-      });
       
     } catch (error) {
       console.error('Login error:', error);
@@ -107,10 +100,10 @@ const Login = () => {
 
   return (
     <>
-      
-      
+
+
       <div className="min-h-screen flex flex-col items-center justify-center p-3 sm:p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50">
-        
+
         {/* Career Connect Title - Responsive sizing */}
         <div className="text-center mb-3 sm:mb-6 md:mb-12 px-3 sm:px-4 w-full max-w-md">
           <h1 className="text-[#1e293b] text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-1 sm:mb-2">
@@ -123,7 +116,7 @@ const Login = () => {
 
         {/* Login Card - Fully responsive */}
         <div className="login-card w-full max-w-[320px] sm:max-w-[380px] md:max-w-[440px] rounded-2xl sm:rounded-[2rem] md:rounded-[3rem] shadow-lg sm:shadow-xl md:shadow-2xl p-5 sm:p-8 md:p-12 bg-white/90 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
-          
+
           {/* Illustration - Responsive sizing */}
           <div className="w-full max-w-[100px] sm:max-w-[140px] md:max-w-[200px] lg:max-w-[240px] mx-auto aspect-square mb-3 sm:mb-4 md:mb-6 flex items-center justify-center">
             <img
@@ -144,10 +137,10 @@ const Login = () => {
           </div>
 
           {/* Demo Credentials Help (Optional - can be removed in production) */}
-          
+
 
           <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-4">
-            
+
             {/* Roll Number field */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-3 sm:left-4 md:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors z-10">
@@ -162,9 +155,8 @@ const Login = () => {
                 value={formData.rollNo}
                 onChange={handleChange}
                 required
-                className={`w-full pl-8 sm:pl-10 md:pl-14 pr-3 sm:pr-4 md:pr-6 py-2 sm:py-2.5 md:py-4 bg-slate-50 border ${
-                  errors.rollNo ? 'border-red-300 bg-red-50' : 'border-transparent'
-                } rounded-lg sm:rounded-xl md:rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-slate-700 font-medium text-xs sm:text-sm md:text-base`}
+                className={`w-full pl-8 sm:pl-10 md:pl-14 pr-3 sm:pr-4 md:pr-6 py-2 sm:py-2.5 md:py-4 bg-slate-50 border ${errors.rollNo ? 'border-red-300 bg-red-50' : 'border-transparent'
+                  } rounded-lg sm:rounded-xl md:rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-slate-700 font-medium text-xs sm:text-sm md:text-base`}
               />
               {errors.rollNo && (
                 <p className="text-[8px] sm:text-[10px] md:text-xs text-red-500 mt-0.5 sm:mt-1 ml-1">
@@ -187,11 +179,10 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className={`w-full pl-8 sm:pl-10 md:pl-14 pr-8 sm:pr-10 md:pr-12 py-2 sm:py-2.5 md:py-4 bg-slate-50 border ${
-                  errors.password ? 'border-red-300 bg-red-50' : 'border-transparent'
-                } rounded-lg sm:rounded-xl md:rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-slate-700 font-medium text-xs sm:text-sm md:text-base`}
+                className={`w-full pl-8 sm:pl-10 md:pl-14 pr-8 sm:pr-10 md:pr-12 py-2 sm:py-2.5 md:py-4 bg-slate-50 border ${errors.password ? 'border-red-300 bg-red-50' : 'border-transparent'
+                  } rounded-lg sm:rounded-xl md:rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-slate-700 font-medium text-xs sm:text-sm md:text-base`}
               />
-              
+
               {/* Eye toggle button */}
               <button
                 type="button"
@@ -210,7 +201,7 @@ const Login = () => {
                   </svg>
                 )}
               </button>
-              
+
               {errors.password && (
                 <p className="text-[8px] sm:text-[10px] md:text-xs text-red-500 mt-0.5 sm:mt-1 ml-1">
                   {errors.password}
@@ -219,15 +210,14 @@ const Login = () => {
             </div>
 
             {/* Forgot Password Link */}
-            
+
 
             {/* Sign In button */}
             <button
               type="submit"
               disabled={isLoading || isLoggingIn}
-              className={`w-full py-2.5 sm:py-3 md:py-4 mt-1 sm:mt-2 md:mt-3 bg-blue-600 text-white font-bold rounded-lg sm:rounded-xl md:rounded-2xl shadow-md sm:shadow-lg shadow-blue-200 hover:bg-blue-700 active:transform active:scale-[0.98] transition-all text-sm sm:text-base md:text-lg ${
-                (isLoading || isLoggingIn) ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
+              className={`w-full py-2.5 sm:py-3 md:py-4 mt-1 sm:mt-2 md:mt-3 bg-blue-600 text-white font-bold rounded-lg sm:rounded-xl md:rounded-2xl shadow-md sm:shadow-lg shadow-blue-200 hover:bg-blue-700 active:transform active:scale-[0.98] transition-all text-sm sm:text-base md:text-lg ${(isLoading || isLoggingIn) ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
             >
               {isLoading || isLoggingIn ? (
                 <div className="flex items-center justify-center gap-2">
@@ -261,7 +251,7 @@ const Login = () => {
           </div>
 
           {/* Quick Help Tips */}
-       
+
         </div>
 
         {/* Footer */}
