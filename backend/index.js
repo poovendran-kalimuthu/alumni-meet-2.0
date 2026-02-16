@@ -7,12 +7,16 @@ import cors from "cors";
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
-app.use(cors({
-    
-    origin: "https://alumni-meet-2-0.vercel.app",   
-    credentials: true
+app.use(
+    cors({
+        origin: [
+            "https://alumni-meet-2-0.vercel.app",
+            "http://localhost:5001/api"
+        ],
+        credentials: true,
+    })
+);
 
-}));
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
@@ -21,4 +25,3 @@ app.listen(PORT, "0.0.0.0", async () => {
     await connectDB();
     console.log("Happy Hacking !!");
 });
-    
