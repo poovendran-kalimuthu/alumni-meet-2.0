@@ -9,6 +9,7 @@ import { Loader } from 'lucide-react'
 import AdminLogin from './pages/AdminPage'
 import AdminDashboard from './pages/AdminDashboard'
 import { ToastContainer, toast } from 'react-toastify';
+import FeedbackPage from './pages/FeedbackPage'
 
 const App = () => {
   const { authUser, isCheckingAuth, checkAuth } = useAuthStore();
@@ -18,7 +19,7 @@ const App = () => {
     checkAuth();
   }, [checkAuth]);
 
-  console.log({authUser});
+  console.log({ authUser });
 
   if (isCheckingAuth)
     return (
@@ -31,13 +32,15 @@ const App = () => {
     <div>
       <BrowserRouter>
         <Routes>
-          <Route path = "/" element={authUser ? <HomePage/> : <Navigate to="/login" />} />
-          <Route path = "/signup" element={!authUser ? <SignupPage/> : <Navigate to="/" />} />
-          <Route path = "/login" element={!authUser ? <LoginPage/> : <Navigate to="/" />} />
-          <Route path = "/portal/admin" element={<AdminLogin/>} />
-          <Route path = "/portal/admin/dashboard" element={<AdminDashboard/>} />
+          <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
+          <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
+          <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/portal/admin" element={<AdminLogin />} />
+          <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+
         </Routes>
-        <ToastContainer/>
+        <ToastContainer />
       </BrowserRouter>
       <Toaster />
     </div>
