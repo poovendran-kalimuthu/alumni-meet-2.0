@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import '../login.css';
 import { useAuthStore } from '../store/useAuthStore.js';
-
 import toast from "react-hot-toast";
 
 const Login = () => {
@@ -57,7 +56,6 @@ const Login = () => {
     if (!validateForm()) {
       toast.error('Please fix the errors in the form', {
         position: "top-center",
-        autoClose: 3000,
       });
       return;
     }
@@ -65,13 +63,19 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(formData);
+      // TRANSFORM DATA HERE: 
+      // Convert rollNo to Uppercase before sending to the backend
+      const submissionData = {
+        ...formData,
+        rollNo: formData.rollNo.toUpperCase().trim()
+      };
+
+      await login(submissionData);
       
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.message || 'Login failed. Please check your credentials.', {
         position: "top-center",
-        autoClose: 4000,
       });
     } finally {
       setIsLoading(false);
@@ -82,29 +86,11 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
-  // Handle quick input for demo/test accounts
-  const fillDemoCredentials = (type) => {
-    if (type === 'student') {
-      setFormData({
-        rollNo: 'STU001',
-        password: 'password123'
-      });
-    } else if (type === 'admin') {
-      setFormData({
-        rollNo: 'ADMIN001',
-        password: 'admin123'
-      });
-    }
-    setErrors({});
-  };
-
   return (
     <>
-
-
       <div className="min-h-screen flex flex-col items-center justify-center p-3 sm:p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50">
 
-        {/* Career Connect Title - Responsive sizing */}
+        {/* Career Connect Title */}
         <div className="text-center mb-3 sm:mb-6 md:mb-12 px-3 sm:px-4 w-full max-w-md">
           <h1 className="text-[#1e293b] text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-1 sm:mb-2">
             Alumni Meet 2.0
@@ -114,10 +100,10 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Login Card - Fully responsive */}
+        {/* Login Card */}
         <div className="login-card w-full max-w-[320px] sm:max-w-[380px] md:max-w-[440px] rounded-2xl sm:rounded-[2rem] md:rounded-[3rem] shadow-lg sm:shadow-xl md:shadow-2xl p-5 sm:p-8 md:p-12 bg-white/90 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
 
-          {/* Illustration - Responsive sizing */}
+          {/* Illustration */}
           <div className="w-full max-w-[100px] sm:max-w-[140px] md:max-w-[200px] lg:max-w-[240px] mx-auto aspect-square mb-3 sm:mb-4 md:mb-6 flex items-center justify-center">
             <img
               src="https://illustrations.popsy.co/blue/abstract-art-6.svg"
@@ -135,9 +121,6 @@ const Login = () => {
               Enter your roll no and password
             </p>
           </div>
-
-          {/* Demo Credentials Help (Optional - can be removed in production) */}
-
 
           <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-4">
 
@@ -183,7 +166,6 @@ const Login = () => {
                   } rounded-lg sm:rounded-xl md:rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-slate-700 font-medium text-xs sm:text-sm md:text-base`}
               />
 
-              {/* Eye toggle button */}
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
@@ -209,10 +191,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* Forgot Password Link */}
-
-
-            {/* Sign In button */}
             <button
               type="submit"
               disabled={isLoading || isLoggingIn}
@@ -241,17 +219,13 @@ const Login = () => {
                 type="button"
                 onClick={() => toast.error('Contact Coordinators for queries !', {
                   position: "top-center",
-                  autoClose: 3000,
                 })}
                 className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
               >
-                Contact Event corrdinators
+                Contact Event coordinators
               </button>
             </p>
           </div>
-
-          {/* Quick Help Tips */}
-
         </div>
 
         {/* Footer */}
