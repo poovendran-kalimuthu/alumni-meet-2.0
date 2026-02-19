@@ -71,7 +71,7 @@ const Login = () => {
       };
 
       await login(submissionData);
-      
+
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.message || 'Login failed. Please check your credentials.', {
@@ -92,8 +92,8 @@ const Login = () => {
 
         {/* Career Connect Title */}
         <div className="text-center mb-3 sm:mb-6 md:mb-12 px-3 sm:px-4 w-full max-w-md">
-          <h1 className="text-[#1e293b] text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-1 sm:mb-2">
-            Alumni Meet 2.0
+          <h1 className="text-[#1e293b] text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-1 sm:mb-2">
+            Building Young minds to Entreprenuers
           </h1>
           <p className="text-slate-600 text-xs sm:text-sm md:text-lg font-medium">
             Your gateway to professional opportunities
