@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 app.use(
     cors({
         origin: [
-            "https://alumni-meet-2-0.vercel.app",
+            "https://entrepreneur-meet.vercel.app",
             "http://localhost:5001/api"
         ],
         credentials: true,
