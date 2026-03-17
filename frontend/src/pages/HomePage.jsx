@@ -336,7 +336,7 @@ const HomePage = () => {
               Post Attendance
             </h1>
             <p className="text-slate-400 text-[10px] sm:text-xs font-medium font-secondary">
-              Rage to Research - Event Check-in
+              Rage to Research Session II - Event Check-in
             </p>
           </div>
 
