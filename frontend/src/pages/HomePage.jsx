@@ -24,7 +24,7 @@ const HomePage = () => {
   };
 
   // Premises radius in meters
-  const PREMISES_RADIUS = 100;
+  const PREMISES_RADIUS = 200;
 
   // Student information
   const studentInfo = {
