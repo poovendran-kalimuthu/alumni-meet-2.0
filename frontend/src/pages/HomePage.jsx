@@ -271,7 +271,7 @@ const HomePage = () => {
 
     } catch (error) {
       console.error('Submission error:', error);
-      toast.error(error.message || "❌ Failed to post attendance", {
+      toast.error(error.message || "Failed to post attendance", {
         position: "top-center",
         autoClose: 5000,
       });
