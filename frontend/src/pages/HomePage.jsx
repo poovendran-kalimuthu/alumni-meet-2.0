@@ -20,7 +20,7 @@ const HomePage = () => {
   // Event location coordinates
   const EVENT_LOCATION = {
     lat: 10.00001,
-    lng: 77.00000
+    lng: 77.0001
   };
 
   // Premises radius in meters
