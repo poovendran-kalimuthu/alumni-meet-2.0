@@ -43,7 +43,7 @@ const AdminLogin = () => {
       localStorage.setItem("admin_token", "bW9jay10b2tlbi0xMjM="); // Use a mock token
       localStorage.setItem("admin_email", formData.username);
 
-      setTimeout(() => navigate("/admin/dashboard"), 1800);
+      setTimeout(() => navigate("/portal/admin/dashboard"), 1800);
     } catch (err) {
       setError(err.message);
       setFormData(prev => ({ ...prev, password: "" })); // Clear password on failure
