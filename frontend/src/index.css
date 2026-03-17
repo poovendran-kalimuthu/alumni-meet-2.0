@@ -1,7 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.font-primary{
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-secondary{
+  font-family: 'DM Sans', sans-serif;
+}
 
 @keyframes blob {
   0% { transform: translate(0px, 0px) scale(1); }
