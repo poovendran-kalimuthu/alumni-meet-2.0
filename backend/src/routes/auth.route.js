@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, logout } from '../controllers/auth.controller.js';
+import { login, logout, adminLogin } from '../controllers/auth.controller.js';
 import protectRoute from "../middlewares/auth.middleware.js"
 import { checkAuth } from '../controllers/auth.controller.js';
 import User from '../models/user.model.js';
@@ -8,6 +8,7 @@ const router = express.Router();
 
 
 router.post("/login", login)
+router.post("/admin/login", adminLogin)
 router.post("/logout", logout)
 
 

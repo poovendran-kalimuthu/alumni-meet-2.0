@@ -85,7 +85,7 @@ const Login = () => {
                   value={formData.rollNo}
                   onChange={handleChange}
                   placeholder="Enter your roll number"
-                  className={`w-full pl-12 pr-4 py-3 border ${errors.rollNo ? 'border-red-500' : 'border-slate-200'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition-all text-[#0f172a]`}
+                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border ${errors.rollNo ? 'border-red-400' : 'border-slate-200'} rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400 font-medium`}
                 />
               </div>
             </div>
@@ -102,7 +102,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className={`w-full pl-12 pr-12 py-3 border ${errors.password ? 'border-red-500' : 'border-slate-200'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition-all text-[#0f172a]`}
+                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50/50 border ${errors.password ? 'border-red-400' : 'border-slate-200'} rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400 font-medium`}
                 />
                 <button
                   type="button"

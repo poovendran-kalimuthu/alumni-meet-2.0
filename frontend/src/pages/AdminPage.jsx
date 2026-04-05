@@ -11,10 +11,7 @@ const AdminLogin = () => {
   const [success, setSuccess] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const ADMIN_CREDENTIALS = {
-    username: "careerconnect@spectrum.co.in",
-    password: "Spectrum22112233"
-  };
+  // Credentials moved to backend
 
   // Progress bar effect for success state
   useEffect(() => {
@@ -34,13 +31,20 @@ const AdminLogin = () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
-      if (formData.username !== ADMIN_CREDENTIALS.username ||
-        formData.password !== ADMIN_CREDENTIALS.password) {
-        throw new Error("Access Denied: Invalid administrator credentials");
+      const response = await fetch("https://alumni-meet-2-0.onrender.com/api/auth/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.username, password: formData.password })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Access Denied: Invalid administrator credentials");
       }
 
       setSuccess(true);
-      localStorage.setItem("admin_token", "bW9jay10b2tlbi0xMjM="); // Use a mock token
+      localStorage.setItem("admin_token", "jwt-token-placeholder"); // Token is handled via cookies in this app's architecture
       localStorage.setItem("admin_email", formData.username);
 
       setTimeout(() => navigate("/portal/admin/dashboard"), 1800);
