@@ -121,163 +121,250 @@ const AdminDashboard = () => {
   if (loading) return <div className="min-h-screen bg-[#F4F7FE] flex items-center justify-center font-['Space_Grotesk'] text-indigo-600 font-bold animate-pulse">Initializing SPECTRUM...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F4F7FE] text-[#2B3674] font-['Space_Grotesk'] flex flex-col lg:flex-row p-4 lg:p-6 gap-6">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] font-['Space_Grotesk'] flex flex-col lg:flex-row overflow-hidden">
       
       {/* --- Sidebar --- */}
-      <aside className="w-80 bg-[#111C44] rounded-[2.5rem] p-8 shadow-2xl hidden lg:flex flex-col text-white relative overflow-hidden">
+      <aside className="w-72 bg-[#0F172A] p-8 hidden lg:flex flex-col text-white relative shadow-2xl">
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-        <div className="flex items-center gap-4 mb-12 border-b border-white/10 pb-8">
-          <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
-            <FiCommand className="text-white text-2xl" />
+        
+        <div className="flex items-center gap-3 mb-12 border-b border-white/5 pb-8">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+            <FiShield className="text-white text-xl" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">SPECTRUM</h1>
-            <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-[0.2em]">ECE Association</p>
+            <h1 className="text-lg font-bold tracking-tight">SPECTRUM</h1>
+            <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-[0.2em] opacity-80">Admin Console</p>
           </div>
         </div>
 
-        <nav className="space-y-4 flex-1">
-          <button className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl bg-white/10 text-white font-bold transition-all"><FiLayers /> Dashboard</button>
-          <button className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-white/50 font-bold hover:bg-white/5"><FiUsers /> Registry</button>
-          <button className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-white/50 font-bold hover:bg-white/5"><FiActivity /> Statistics</button>
+        <nav className="space-y-2 flex-1">
+          <SidebarLink icon={<FiLayers />} label="Overview" active />
+          <SidebarLink icon={<FiUsers />} label="Registry" />
+          <SidebarLink icon={<FiActivity />} label="Analytics" />
+          <SidebarLink icon={<FiServer />} label="Infrastructure" />
         </nav>
 
-        <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
-          <p className="text-xs text-indigo-300 mb-2 flex items-center gap-2"><FiClock /> System Time</p>
-          <p className="text-2xl font-bold font-mono">{currentTime.toLocaleTimeString([], { hour12: false })}</p>
+        <div className="mt-auto p-5 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
+          <p className="text-[10px] text-indigo-300 mb-2 font-bold uppercase tracking-widest flex items-center gap-2">
+            <FiClock className="animate-pulse" /> System Time
+          </p>
+          <p className="text-xl font-bold font-mono tracking-tighter">
+            {currentTime.toLocaleTimeString([], { hour12: false })}
+          </p>
         </div>
       </aside>
 
       {/* --- Main Content --- */}
-      <main className="flex-1 flex flex-col gap-8 min-w-0">
-        <header className="bg-white rounded-[2rem] p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm border border-white/50">
-          <div className="flex items-center gap-3 px-4">
-             <FiServer className="text-indigo-600" />
-             <span className="text-sm font-bold">MCET Network Status: </span>
-             <span className="flex items-center gap-1.5 text-emerald-500 font-bold text-sm">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span> Active
-             </span>
+      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full border border-emerald-100">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Network Active</span>
+             </div>
+             <h2 className="text-sm font-semibold text-slate-400 hidden md:block">/ Dashboard / Overview</h2>
           </div>
           
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1">
+            <div className="relative flex-1 md:w-64">
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="text" placeholder="Filter roll or name..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-[#F4F7FE] border-none rounded-xl py-3 pl-12 pr-4 text-sm outline-none ring-2 ring-transparent focus:ring-indigo-100 transition-all" />
+              <input 
+                type="text" 
+                placeholder="Search registry..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400" 
+              />
             </div>
-            <button onClick={exportToPDF} className="flex items-center gap-2 px-6 py-3 bg-[#111C44] text-white rounded-xl text-xs font-bold hover:bg-indigo-900 transition-all">
-              <FiFileText /> Export PDF
+            <button 
+              onClick={exportToPDF} 
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+            >
+              <FiDownload /> Export
             </button>
-            <button onClick={loadUsers} className="p-3 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 text-indigo-600"><FiRefreshCw /></button>
+            <button 
+              onClick={loadUsers} 
+              className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors"
+            >
+              <FiRefreshCw className={loading ? "animate-spin" : ""} />
+            </button>
           </div>
         </header>
 
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard label="Total Registered" value={stats.total} icon={<FiUsers />} color="bg-indigo-600" />
-          <StatCard label="Verified Presence" value={stats.present} icon={<FiCheckCircle />} color="bg-emerald-500" />
-          <StatCard label="Absence Log" value={stats.absent} icon={<FiXCircle />} color="bg-rose-500" />
-          <StatCard label="Attendance Yield" value={`${stats.rate}%`} icon={<FiActivity />} color="bg-orange-500" />
-        </div>
-
-        {/* Registry Table */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl p-8 border border-white overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-black flex items-center gap-3">
-              Registry Feed <FiShield className="text-indigo-600 text-lg opacity-30" />
-            </h2>
-            <select 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)} 
-              className="bg-[#F4F7FE] border-none rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer"
-            >
-              <option value="all">Display All</option>
-              <option value="present">Verified Only</option>
-              <option value="absent">Pending Only</option>
-            </select>
+        <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard label="Registry Total" value={stats.total} icon={<FiUsers />} trend="+4.2%" color="bg-indigo-600" />
+            <StatCard label="Verified Present" value={stats.present} icon={<FiCheckCircle />} trend="Live" color="bg-emerald-500" />
+            <StatCard label="Pending Status" value={stats.absent} icon={<FiXCircle />} trend="Action Required" color="bg-rose-500" />
+            <StatCard label="Total Yield" value={`${stats.rate}%`} icon={<FiActivity />} trend="Stable" color="bg-amber-500" />
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-50">
-                  <th className="pb-6 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em]">Student Identity</th>
-                  <th className="pb-6 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em]">Roll Index</th>
-                  <th className="pb-6 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] text-center">Status</th>
-                  <th className="pb-6 text-[10px] font-black text-[#A3AED0] uppercase tracking-[0.2em] text-right">Operations</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50/50">
-                {filteredStudents.map((student) => (
-                  <tr key={student._id} className="group hover:bg-[#F4F7FE]/50 transition-all duration-200">
-                    <td className="py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center font-black text-indigo-600 border border-indigo-100">
-                          {student.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-bold text-[#2B3674]">{student.name}</p>
-                          <p className="text-[10px] text-[#A3AED0] font-bold uppercase tracking-widest">{student.className}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-6">
-                      <span className="font-mono text-xs font-black text-indigo-500 tracking-tighter">{student.rollNo}</span>
-                    </td>
-                    <td className="py-6 text-center">
-                      <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm border ${
-                        student.hasAttended ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-                      }`}>
-                        {student.hasAttended ? 'Verified' : 'Pending'}
-                      </span>
-                    </td>
-                    <td className="py-6 text-right">
-                      <button onClick={() => { setEditingStudent(student._id); setEditingStatus(student.hasAttended ? "present" : "absent"); }} className="p-3 hover:bg-indigo-50 rounded-2xl text-slate-400 hover:text-indigo-600 transition-all">
-                        <FiEdit2 size={16} />
-                      </button>
-                    </td>
+          {/* Registry Section */}
+          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Student Registry Feed</h3>
+                <p className="text-xs text-slate-500 font-medium">Real-time attendance & verification tracking</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter:</span>
+                <select 
+                  value={statusFilter} 
+                  onChange={(e) => setStatusFilter(e.target.value)} 
+                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none cursor-pointer hover:border-indigo-500 transition-colors"
+                >
+                  <option value="all">Display All</option>
+                  <option value="present">Verified</option>
+                  <option value="absent">Pending</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50">
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student Information</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll Index</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Verification Status</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStudents.map((student) => (
+                    <tr key={student._id} className="group hover:bg-indigo-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center font-bold text-indigo-600 text-xs border border-indigo-100/50 group-hover:scale-110 transition-transform">
+                            {student.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-slate-700">{student.name}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{student.className}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-mono text-xs font-bold text-indigo-500 bg-indigo-50/50 px-2 py-1 rounded-md">{student.rollNo}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex justify-center">
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                            student.hasAttended ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'
+                          }`}>
+                            <span className={`w-1 h-1 rounded-full ${student.hasAttended ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            {student.hasAttended ? 'Verified' : 'Pending'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => { setEditingStudent(student._id); setEditingStatus(student.hasAttended ? "present" : "absent"); }} 
+                          className="p-2 hover:bg-white hover:shadow-sm hover:text-indigo-600 rounded-lg text-slate-400 transition-all active:scale-90"
+                        >
+                          <FiEdit2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {filteredStudents.length === 0 && (
+              <div className="py-20 text-center">
+                <FiUsers className="mx-auto text-slate-200 text-4xl mb-4" />
+                <p className="text-slate-400 font-medium tracking-tight">No records found matching your criteria</p>
+              </div>
+            )}
           </div>
         </div>
       </main>
 
       {/* --- Quick Update Overlay --- */}
       {editingStudent && (
-        <div className="fixed inset-0 bg-[#0B1437]/40 backdrop-blur-md z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-[3rem] p-10 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-             <h3 className="text-xl font-black mb-2">Modify Status</h3>
-             <p className="text-sm text-[#A3AED0] mb-8 font-medium">Update student verification status.</p>
-             <div className="flex gap-4 mb-8">
-                <button onClick={() => setEditingStatus("present")} className={`flex-1 py-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${editingStatus === 'present' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-50 opacity-40'}`}>
-                  <FiCheckCircle size={20} /> <span className="text-[10px] font-black uppercase">Present</span>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200">
+             <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                  <FiShield size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Update Status</h3>
+                  <p className="text-xs text-slate-400 font-medium">Securely modify verification state</p>
+                </div>
+             </div>
+
+             <div className="flex gap-3 mb-8">
+                <button 
+                  onClick={() => setEditingStatus("present")} 
+                  className={`flex-1 py-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all group ${
+                    editingStatus === 'present' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 hover:border-slate-200 text-slate-400 grayscale'
+                  }`}
+                >
+                  <FiCheckCircle size={22} className={editingStatus === 'present' ? 'animate-bounce' : ''} /> 
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Present</span>
                 </button>
-                <button onClick={() => setEditingStatus("absent")} className={`flex-1 py-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${editingStatus === 'absent' ? 'border-rose-500 bg-rose-50 text-rose-600' : 'border-slate-50 opacity-40'}`}>
-                  <FiXCircle size={20} /> <span className="text-[10px] font-black uppercase">Absent</span>
+                <button 
+                  onClick={() => setEditingStatus("absent")} 
+                  className={`flex-1 py-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all group ${
+                    editingStatus === 'absent' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-100 hover:border-slate-200 text-slate-400 grayscale'
+                  }`}
+                >
+                  <FiXCircle size={22} className={editingStatus === 'absent' ? 'animate-bounce' : ''} /> 
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Absent</span>
                 </button>
              </div>
+
              <div className="flex gap-3">
-                <button onClick={() => setEditingStudent(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold text-sm">Cancel</button>
-                <button onClick={() => updateAttendance(editingStudent, editingStatus)} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-100">Update Securely</button>
+                <button onClick={() => setEditingStudent(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-200 transition-colors">Cancel</button>
+                <button onClick={() => updateAttendance(editingStudent, editingStatus)} className="flex-[2] py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-[0.98]">Confirm Update</button>
              </div>
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoom-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .animate-in { animation: fade-in 0.2s ease-out; }
+        .zoom-in-95 { animation: zoom-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+      `}</style>
     </div>
   );
 };
 
-const StatCard = ({ label, value, icon, color }) => (
-  <div className="bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-5 border border-white group hover:shadow-xl transition-all">
-    <div className={`w-14 h-14 rounded-2xl ${color} text-white flex items-center justify-center text-2xl shadow-lg transition-transform group-hover:rotate-12`}>
-      {icon}
+const SidebarLink = ({ icon, label, active = false }) => (
+  <button className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-xl font-bold text-sm transition-all group ${
+    active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
+  }`}>
+    <span className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'} transition-colors`}>{icon}</span>
+    {label}
+  </button>
+);
+
+const StatCard = ({ label, value, icon, trend, color }) => (
+  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between group hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 transition-all duration-300">
+    <div className="flex items-start justify-between mb-4">
+      <div className={`w-12 h-12 rounded-2xl ${color} text-white flex items-center justify-center text-xl shadow-lg shadow-current/20 group-hover:rotate-6 transition-transform`}>
+        {icon}
+      </div>
+      <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
+        trend === 'Live' ? 'bg-emerald-50 text-emerald-600' : 
+        trend === 'Stable' ? 'bg-blue-50 text-blue-600' : 
+        trend === 'Action Required' ? 'bg-rose-50 text-rose-600' : 
+        'bg-slate-50 text-slate-500'
+      }`}>
+        {trend}
+      </span>
     </div>
     <div>
-      <p className="text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-2xl font-black text-[#2B3674]">{value}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-3xl font-bold text-slate-800 tracking-tight">{value}</p>
     </div>
   </div>
 );
 
-export default AdminDashboard;
+export default AdminDashboard;
