@@ -402,20 +402,20 @@ const HomePage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-xs sm:text-sm font-semibold text-slate-800 font-primary mb-0.5 sm:mb-1">
-                      Rage to Research - Technofete'26
+                      Tech Talk
                     </h4>
                     <div className="space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-slate-600 font-secondary">
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         </svg>
-                        <span className="truncate">CS Hall</span>
+                        <span className="truncate">EEE Seminar Hall</span>
                       </div>
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="truncate">Today, 9.00 AM - 4:30 PM</span>
+                        <span className="truncate">06 April, 10.00 AM to 1.00 PM</span>
                       </div>
                     </div>
                   </div>

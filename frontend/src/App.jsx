@@ -40,9 +40,13 @@ const App = () => {
           <Route path="/feedback" element={<FeedbackPage />} />
 
         </Routes>
-        <ToastContainer />
+        <ToastContainer style={{ fontFamily: "'Space Grotesk', sans-serif" }} />
       </BrowserRouter>
-      <Toaster />
+      <Toaster toastOptions={{
+        style: {
+          fontFamily: "'Space Grotesk', sans-serif",
+        }
+      }} />
     </div>
   )
 }

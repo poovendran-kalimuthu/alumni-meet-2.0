@@ -41,7 +41,7 @@ const Login = () => {
         ...formData,
         rollNo: formData.rollNo.toUpperCase().trim()
       });
-      toast.success('System Initialized');
+      // No toast here as per user request
     } catch (error) {
       toast.error(error.message || 'Access Denied');
     }
@@ -70,7 +70,7 @@ const Login = () => {
               Welcome Back!
             </h1>
             <p className="text-slate-500 text-sm leading-relaxed">
-              Sign in to post your attendance for <span className='font-bold'>Rage to Research</span>  event.
+              Sign in to post your attendance for <span className='font-bold'>Tech Talk</span>  event.
             </p>
           </div>
 
