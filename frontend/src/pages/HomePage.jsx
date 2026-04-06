@@ -19,12 +19,12 @@ const HomePage = () => {
 
   // Event location coordinates
   const EVENT_LOCATION = {
-    lat: 10.00001,
-    lng: 77.0001
+    lat: 10.654071,
+    lng: 77.035901
   };
 
   // Premises radius in meters
-  const PREMISES_RADIUS = 200;
+  const PREMISES_RADIUS = 100;
 
   // Student information
   const studentInfo = {
