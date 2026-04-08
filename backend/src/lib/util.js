@@ -6,11 +6,11 @@ const generateToken = (userId,res) =>{
         expiresIn: '7d'
     });
 
-    res.cookie('jwt',token,{
-        maxAge: 7*24*60*60*1000,
+    res.cookie('jwt', token, {
+        maxAge: 7 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' ? true : false,
-        sameSite: 'strict'
+        secure: true, // Always true for cross-domain support in modern browsers
+        sameSite: 'none' // Required for cross-domain cookies (Vercel -> Render)
     })
 
     return token;

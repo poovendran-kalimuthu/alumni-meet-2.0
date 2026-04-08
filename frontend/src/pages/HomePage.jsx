@@ -1,11 +1,19 @@
 // HomePage.jsx
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import toast from "react-hot-toast";
 import 'react-toastify/dist/ReactToastify.css';
 
 const HomePage = () => {
   const [loading, setLoading] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [eventSettings, setEventSettings] = useState({
+    lat: 10.654071,
+    lng: 77.035901,
+    radius: 100,
+    isAttendanceEnabled: true
+  });
   const [locationStatus, setLocationStatus] = useState('pending');
   const [userLocation, setUserLocation] = useState(null);
   const [distanceFromVenue, setDistanceFromVenue] = useState(null);
@@ -19,12 +27,12 @@ const HomePage = () => {
 
   // Event location coordinates
   const EVENT_LOCATION = {
-    lat: 10.654071,
-    lng: 77.035901
+    lat: eventSettings.lat,
+    lng: eventSettings.lng
   };
 
   // Premises radius in meters
-  const PREMISES_RADIUS = 100;
+  const PREMISES_RADIUS = eventSettings.radius;
 
   // Student information
   const studentInfo = {
@@ -33,8 +41,23 @@ const HomePage = () => {
     className: authUser?.className || 'N/A'
   };
 
-  // Simulate initial loading
+  // Fetch settings and handle loading
   useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+        const res = await axios.get(`${apiUrl}/settings`);
+        if (res.data.success) {
+          setEventSettings(res.data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching settings:", err);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    fetchSettings();
     const timer = setTimeout(() => {
       setLoading(false);
     }, 1000);
@@ -243,7 +266,8 @@ const HomePage = () => {
       
       
 
-      const response = await fetch('https://alumni-meet-2-0.onrender.com/api/auth/attendance', {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const response = await fetch(`${apiUrl}/auth/attendance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,6 +364,25 @@ const HomePage = () => {
             </p>
           </div>
 
+          {!eventSettings.isAttendanceEnabled ? (
+            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6 text-center animate-in fade-in duration-500">
+               <div className="w-16 h-16 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H8m13-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+               </div>
+               <h3 className="text-rose-800 font-bold text-lg mb-2">Attendance Disabled</h3>
+               <p className="text-rose-600 text-sm font-medium leading-relaxed">
+                  The attendance system is currently locked by the administrator. Please try again later.
+               </p>
+               <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-6 px-6 py-2 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors"
+                >
+                  Refresh Status
+                </button>
+            </div>
+          ) : (
           <form className="space-y-3 sm:space-y-4" onSubmit={handleSubmit}>
             {/* Student Information */}
             <div className="space-y-2 sm:space-y-3">
@@ -662,6 +705,7 @@ const HomePage = () => {
               )}
             </button>
           </form>
+          )}
 
           {/* Information Footer */}
           <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200">

@@ -3,6 +3,7 @@ import { login, logout, adminLogin } from '../controllers/auth.controller.js';
 import protectRoute from "../middlewares/auth.middleware.js"
 import { checkAuth } from '../controllers/auth.controller.js';
 import User from '../models/user.model.js';
+import Settings from '../models/settings.model.js';
 
 const router = express.Router();
 
@@ -76,17 +77,28 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 router.post("/attendance", async (req, res) => {
     try {
-        const { studentId, event, userLat, userLng } = req.body;
+        const { studentId, userLat, userLng } = req.body;
 
-        // 🔐 Basic validation
+        // 📍 FETCH DYNAMIC SETTINGS
+        let settings = await Settings.findOne();
+        if (!settings) {
+            settings = await Settings.create({}); // fallback to defaults
+        }
 
-        // 📍 EVENT LOCATION (ADMIN CONTROLLED)
+        // 🛑 Check if attendance is enabled
+        if (!settings.isAttendanceEnabled) {
+            return res.status(403).json({
+                success: false,
+                message: "Attendance system is currently disabled by the administrator."
+            });
+        }
+
         const EVENT_LOCATION = {
-            lat: 10.654281,
-            lng:  77.035257
+            lat: settings.lat,
+            lng: settings.lng
         };
 
-        const PREMISES_RADIUS = 200; // meters
+        const PREMISES_RADIUS = settings.radius;
 
         // 📐 Distance check
         const distance = calculateDistance(

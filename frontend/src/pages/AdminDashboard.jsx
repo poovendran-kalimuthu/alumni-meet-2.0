@@ -3,10 +3,12 @@ import axios from "axios";
 import { 
   FiSearch, FiDownload, FiUsers, FiCheckCircle, 
   FiXCircle, FiRefreshCw, FiActivity, FiLayers, FiClock, 
-  FiEdit2, FiSave, FiX, FiCommand, FiFileText, FiServer, FiShield
+  FiEdit2, FiSave, FiX, FiCommand, FiFileText, FiServer, FiShield,
+  FiSettings, FiMapPin, FiToggleRight, FiToggleLeft
 } from "react-icons/fi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import toast from "react-hot-toast";
 
 const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
@@ -16,6 +18,18 @@ const AdminDashboard = () => {
   const [editingStudent, setEditingStudent] = useState(null);
   const [editingStatus, setEditingStatus] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  const [activeTab, setActiveTab] = useState("registry");
+  const [settings, setSettings] = useState({
+    lat: 10.654281,
+    lng: 77.035257,
+    radius: 200,
+    isAttendanceEnabled: true,
+    locationPresets: []
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [newPreset, setNewPreset] = useState({ name: "", lat: "", lng: "" });
 
   useEffect(() => {
     const link = document.createElement('link');
@@ -23,6 +37,7 @@ const AdminDashboard = () => {
     link.rel = 'stylesheet';
     document.head.appendChild(link);
     loadUsers();
+    loadSettings();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -30,7 +45,8 @@ const AdminDashboard = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("https://alumni-meet-2-0.onrender.com/api/auth/users", { withCredentials: true });
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const res = await axios.get(`${apiUrl}/auth/users`, { withCredentials: true });
       setStudents(res.data.data);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -94,8 +110,9 @@ const AdminDashboard = () => {
 
   const updateAttendance = async (studentId, newStatus) => {
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
       await axios.patch(
-        `https://alumni-meet-2-0.onrender.com/api/auth/users/${studentId}/attendance`,
+        `${apiUrl}/auth/users/${studentId}/attendance`,
         { hasAttended: newStatus === "present" },
         { withCredentials: true }
       );
@@ -104,6 +121,76 @@ const AdminDashboard = () => {
       ));
       setEditingStudent(null);
     } catch (err) { console.error(err); }
+  };
+
+  const loadSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const res = await axios.get(`${apiUrl}/settings`);
+      if (res.data.success) {
+        setSettings(prev => ({
+          ...prev,
+          ...res.data.data,
+          locationPresets: res.data.data.locationPresets || []
+        }));
+      }
+    } catch (err) {
+      console.error("Fetch settings error:", err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleUpdateSettings = async (e) => {
+    e.preventDefault();
+    if (isNaN(settings.lat) || isNaN(settings.lng) || isNaN(settings.radius)) {
+      toast.error("Invalid coordinates or radius. Please check your inputs.");
+      return;
+    }
+    setIsSavingSettings(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const res = await axios.patch(`${apiUrl}/settings`, settings, { withCredentials: true });
+      if (res.data.success) {
+        toast.success("Settings updated successfully!");
+        setSettings(res.data.data);
+      }
+    } catch (err) {
+      console.error("Update settings error:", err);
+      toast.error("Failed to update settings.");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleAddPreset = () => {
+    if (!newPreset.name || !newPreset.lat || !newPreset.lng) {
+      toast.error("Please fill all preset fields");
+      return;
+    }
+    const updatedPresets = [...(settings.locationPresets || []), {
+      name: newPreset.name,
+      lat: parseFloat(newPreset.lat),
+      lng: parseFloat(newPreset.lng)
+    }];
+    setSettings({ ...settings, locationPresets: updatedPresets });
+    setNewPreset({ name: "", lat: "", lng: "" });
+    toast.success("Preset added to list. Don't forget to save!");
+  };
+
+  const handleRemovePreset = (index) => {
+    const updatedPresets = settings.locationPresets.filter((_, i) => i !== index);
+    setSettings({ ...settings, locationPresets: updatedPresets });
+  };
+
+  const handleApplyPreset = (preset) => {
+    setSettings({ 
+      ...settings, 
+      lat: preset.lat, 
+      lng: preset.lng 
+    });
+    toast.success(`Applied ${preset.name} coordinates`);
   };
 
   const filteredStudents = students.filter(s => {
@@ -138,8 +225,9 @@ const AdminDashboard = () => {
         </div>
 
         <nav className="space-y-2 flex-1">
-          <SidebarLink icon={<FiLayers />} label="Overview" active />
-          <SidebarLink icon={<FiUsers />} label="Registry" />
+          <SidebarLink icon={<FiLayers />} label="Overview" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} />
+          <SidebarLink icon={<FiUsers />} label="Registry" active={activeTab === "registry"} onClick={() => setActiveTab("registry")} />
+          <SidebarLink icon={<FiSettings />} label="Settings" active={activeTab === "settings"} onClick={() => setActiveTab("settings")} />
           <SidebarLink icon={<FiActivity />} label="Analytics" />
           <SidebarLink icon={<FiServer />} label="Infrastructure" />
         </nav>
@@ -187,21 +275,201 @@ const AdminDashboard = () => {
               onClick={loadUsers} 
               className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors"
             >
-              <FiRefreshCw className={loading ? "animate-spin" : ""} />
+              <FiRefreshCw className={loading || settingsLoading ? "animate-spin" : ""} />
             </button>
           </div>
         </header>
 
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard label="Registry Total" value={stats.total} icon={<FiUsers />} trend="+4.2%" color="bg-indigo-600" />
-            <StatCard label="Verified Present" value={stats.present} icon={<FiCheckCircle />} trend="Live" color="bg-emerald-500" />
-            <StatCard label="Pending Status" value={stats.absent} icon={<FiXCircle />} trend="Action Required" color="bg-rose-500" />
-            <StatCard label="Total Yield" value={`${stats.rate}%`} icon={<FiActivity />} trend="Stable" color="bg-amber-500" />
-          </div>
+          {activeTab === "settings" ? (
+             <div className="max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden p-8 sm:p-10">
+                   <div className="mb-10">
+                      <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                           <FiSettings />
+                        </div>
+                        System Configurations
+                      </h3>
+                      <p className="text-slate-500 mt-2 text-sm font-medium">Manage deployment parameters and attendance availability protocol</p>
+                   </div>
 
-          {/* Registry Section */}
+                   <form onSubmit={handleUpdateSettings} className="space-y-10">
+                      {/* Attendance Control */}
+                      <div className="bg-slate-50 rounded-3xl p-6 sm:p-8 border border-slate-100 group transition-all hover:border-indigo-100">
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition-all ${settings.isAttendanceEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                                  {settings.isAttendanceEnabled ? <FiToggleRight size={24} /> : <FiToggleLeft size={24} />}
+                               </div>
+                               <div>
+                                  <h4 className="font-bold text-slate-800">Attendance Availability</h4>
+                                  <p className="text-xs text-slate-400 font-medium tracking-tight">Toggle the global attendance marking system</p>
+                               </div>
+                            </div>
+                            <button 
+                               type="button"
+                               onClick={() => setSettings({...settings, isAttendanceEnabled: !settings.isAttendanceEnabled})}
+                               className={`w-14 h-8 rounded-full transition-all relative ${settings.isAttendanceEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                            >
+                               <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${settings.isAttendanceEnabled ? 'left-7' : 'left-1'}`}></div>
+                            </button>
+                         </div>
+                      </div>
+
+                      {/* Location Coordinates */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                         <div className="space-y-3">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                               <FiMapPin className="text-indigo-500" /> Venue Latitude
+                            </label>
+                            <input 
+                               type="number" 
+                               step="0.000001"
+                               value={settings.lat}
+                               onChange={(e) => setSettings({...settings, lat: parseFloat(e.target.value)})}
+                               className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                            />
+                         </div>
+                         <div className="space-y-3">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                               <FiMapPin className="text-indigo-500" /> Venue Longitude
+                            </label>
+                            <input 
+                               type="number" 
+                               step="0.000001"
+                               value={settings.lng}
+                               onChange={(e) => setSettings({...settings, lng: parseFloat(e.target.value)})}
+                               className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                            />
+                         </div>
+                      </div>
+
+                      {/* Location Presets */}
+                      <div className="space-y-6 pt-4">
+                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                             <FiLayers className="text-indigo-500" /> Saved Locations (Presets)
+                         </label>
+                         
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                             <input 
+                                type="text" 
+                                placeholder="Location Name (e.g. Lab 1)"
+                                value={newPreset.name}
+                                onChange={(e) => setNewPreset({...newPreset, name: e.target.value})}
+                                className="bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                             />
+                             <input 
+                                type="number" 
+                                placeholder="Lat"
+                                value={newPreset.lat}
+                                onChange={(e) => setNewPreset({...newPreset, lat: e.target.value})}
+                                className="bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                             />
+                             <div className="flex gap-2">
+                                <input 
+                                    type="number" 
+                                    placeholder="Lng"
+                                    value={newPreset.lng}
+                                    onChange={(e) => setNewPreset({...newPreset, lng: e.target.value})}
+                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={handleAddPreset}
+                                    className="px-4 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all"
+                                >
+                                    <FiCommand />
+                                </button>
+                             </div>
+                         </div>
+
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                            {settings.locationPresets?.map((p, idx) => (
+                               <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between group hover:border-indigo-200 transition-all shadow-sm">
+                                  <div className="flex items-center gap-3">
+                                     <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                                        <FiMapPin size={14} />
+                                     </div>
+                                     <div>
+                                        <p className="text-xs font-bold text-slate-700">{p.name}</p>
+                                        <p className="text-[9px] text-slate-400 font-medium">{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</p>
+                                     </div>
+                                  </div>
+                                  <div className="flex gap-1.5">
+                                     <button 
+                                        type="button"
+                                        onClick={() => handleApplyPreset(p)}
+                                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all text-[10px] font-bold"
+                                     >
+                                        Apply
+                                     </button>
+                                     <button 
+                                        type="button"
+                                        onClick={() => handleRemovePreset(idx)}
+                                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                     >
+                                        <FiX size={14} />
+                                     </button>
+                                  </div>
+                               </div>
+                            ))}
+                         </div>
+                      </div>
+
+                      {/* Radius Control */}
+                      <div className="space-y-3 pt-4">
+                         <div className="flex justify-between items-center mb-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Validation Perimeter (Radius)</label>
+                            <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                               {settings.radius} Meters
+                            </span>
+                         </div>
+                         <input 
+                            type="range" 
+                            min="20" 
+                            max="2000" 
+                            step="10"
+                            value={settings.radius}
+                            onChange={(e) => setSettings({...settings, radius: parseInt(e.target.value)})}
+                            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                         />
+                         <div className="flex justify-between text-[10px] font-bold text-slate-300 uppercase tracking-tighter mt-1 px-1">
+                            <span>Inner Circle (20m)</span>
+                            <span>Standard (200m)</span>
+                            <span>Extended (2km)</span>
+                         </div>
+                      </div>
+
+                      <div className="pt-8 border-t border-slate-100">
+                         <button 
+                            type="submit" 
+                            disabled={isSavingSettings}
+                            className="w-full sm:w-auto px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50"
+                         >
+                            {isSavingSettings ? (
+                               <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            ) : (
+                               <>
+                                  <FiSave /> Securely Commit Changes
+                               </>
+                            )}
+                         </button>
+                      </div>
+                   </form>
+                </div>
+             </div>
+          ) : (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard label="Registry Total" value={stats.total} icon={<FiUsers />} trend="+4.2%" color="bg-indigo-600" />
+              <StatCard label="Verified Present" value={stats.present} icon={<FiCheckCircle />} trend="Live" color="bg-emerald-500" />
+              <StatCard label="Pending Status" value={stats.absent} icon={<FiXCircle />} trend="Action Required" color="bg-rose-500" />
+              <StatCard label="Total Yield" value={`${stats.rate}%`} icon={<FiActivity />} trend="Stable" color="bg-amber-500" />
+            </div>
+
+            {/* Registry Section */}
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
               <div>
@@ -280,6 +548,8 @@ const AdminDashboard = () => {
               </div>
             )}
           </div>
+          </>
+          )}
         </div>
       </main>
 
@@ -336,10 +606,13 @@ const AdminDashboard = () => {
   );
 };
 
-const SidebarLink = ({ icon, label, active = false }) => (
-  <button className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-xl font-bold text-sm transition-all group ${
-    active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
-  }`}>
+const SidebarLink = ({ icon, label, active = false, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-xl font-bold text-sm transition-all group ${
+      active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
+    }`}
+  >
     <span className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'} transition-colors`}>{icon}</span>
     {label}
   </button>

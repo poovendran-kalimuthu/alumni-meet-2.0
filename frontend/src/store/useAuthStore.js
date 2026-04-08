@@ -19,7 +19,6 @@ export const useAuthStore = create((set) => ({
             set({ authUser: res.data })
 
         } catch (error) {
-            console.log("Error Auth Store : " + error.message);
             set({ authUser: null })
         } finally {
             set({ isCheckingAuth: false })
@@ -70,7 +69,6 @@ export const useAuthStore = create((set) => ({
             const res = await axiosInstance.get("/auth/attendance");  // ✅ GET
             return res.data;   
         } catch (error) {
-            console.error("Error fetching attendance:", error);
             throw error;
         }
     }

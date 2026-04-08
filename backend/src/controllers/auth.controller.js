@@ -30,7 +30,6 @@ const login = async (req, res) => {
         })
     }
     catch (error) {
-        console.log("Server Error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 }
@@ -39,8 +38,8 @@ const logout = (req, res) => {
     res.cookie('jwt', '', {
         maxAge: 0,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' ? true : false,
-        sameSite: 'strict'
+        secure: true,
+        sameSite: 'none'
     });
     return res.status(200).json({ message: "Logged out successfully" });
 }
@@ -52,7 +51,6 @@ const checkAuth = (req, res) => {
         res.status(200).json(req.user);
     }
     catch (error) {
-        console.log("Error in checkAuth controller : " + error);
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
@@ -75,7 +73,6 @@ const adminLogin = async (req, res) => {
             return res.status(401).json({ message: "Invalid Administrative Credentials" });
         }
     } catch (error) {
-        console.error("Admin Login Error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
