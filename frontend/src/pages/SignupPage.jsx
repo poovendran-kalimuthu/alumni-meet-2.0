@@ -71,6 +71,7 @@ const SignupPage = () => {
                                 type="text"
                                 className="input input-bordered w-full pl-10"
                                 placeholder="John Doe"
+                                autoComplete="name"
                                 value={formData.fullName}
                                 onChange={(e) =>
                                     setFormData({ ...formData, fullName: e.target.value })
@@ -92,6 +93,7 @@ const SignupPage = () => {
                                 type="email"
                                 className="input input-bordered w-full pl-10"
                                 placeholder="you@example.com"
+                                autoComplete="email"
                                 value={formData.email}
                                 onChange={(e) =>
                                     setFormData({ ...formData, email: e.target.value })
@@ -113,6 +115,7 @@ const SignupPage = () => {
                                 type={showPassword ? "text" : "password"}
                                 className="input input-bordered w-full pl-10"
                                 placeholder="••••••••"
+                                autoComplete="new-password"
                                 value={formData.password}
                                 onChange={(e) =>
                                     setFormData({ ...formData, password: e.target.value })

@@ -133,6 +133,7 @@ const AdminLogin = () => {
                     required
                     value={formData.username}
                     onChange={handleChange}
+                    autoComplete="email"
                     className="w-full bg-zinc-950/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-zinc-700"
                     placeholder="admin@spectrum.tech"
                   />
@@ -149,6 +150,7 @@ const AdminLogin = () => {
                     required
                     value={formData.password}
                     onChange={handleChange}
+                    autoComplete="current-password"
                     className="w-full bg-zinc-950/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-12 text-white text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-zinc-700"
                     placeholder="••••••••••••"
                   />
