@@ -9,8 +9,8 @@ const generateToken = (userId,res) =>{
     res.cookie('jwt', token, {
         maxAge: 7 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true, // Always true for cross-domain support in modern browsers
-        sameSite: 'none' // Required for cross-domain cookies (Vercel -> Render)
+        secure: process.env.NODE_ENV !== "development",
+        sameSite: process.env.NODE_ENV !== "development" ? 'none' : 'lax'
     })
 
     return token;

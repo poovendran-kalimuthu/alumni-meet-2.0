@@ -38,8 +38,8 @@ const logout = (req, res) => {
     res.cookie('jwt', '', {
         maxAge: 0,
         httpOnly: true,
-        secure: true,
-        sameSite: 'none'
+        secure: process.env.NODE_ENV !== "development",
+        sameSite: process.env.NODE_ENV !== "development" ? 'none' : 'lax'
     });
     return res.status(200).json({ message: "Logged out successfully" });
 }
