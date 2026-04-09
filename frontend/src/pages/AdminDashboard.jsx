@@ -45,7 +45,7 @@ const AdminDashboard = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
       const res = await axios.get(`${apiUrl}/auth/users`, { withCredentials: true });
       setStudents(res.data.data);
     } catch (err) {
@@ -110,7 +110,7 @@ const AdminDashboard = () => {
 
   const updateAttendance = async (studentId, newStatus) => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
       await axios.patch(
         `${apiUrl}/auth/users/${studentId}/attendance`,
         { hasAttended: newStatus === "present" },
@@ -126,7 +126,7 @@ const AdminDashboard = () => {
   const loadSettings = async () => {
     setSettingsLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
       const res = await axios.get(`${apiUrl}/settings`);
       if (res.data.success) {
         setSettings(prev => ({

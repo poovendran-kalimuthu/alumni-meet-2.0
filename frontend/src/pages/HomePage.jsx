@@ -45,7 +45,7 @@ const HomePage = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+        const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
         const res = await axios.get(`${apiUrl}/settings`);
         if (res.data.success) {
           setEventSettings(res.data.data);

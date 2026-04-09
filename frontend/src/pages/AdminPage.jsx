@@ -31,7 +31,7 @@ const AdminLogin = () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
       const response = await fetch(`${apiUrl}/auth/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

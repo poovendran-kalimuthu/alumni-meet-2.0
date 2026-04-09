@@ -23,7 +23,7 @@ const FeedbackPage = ({ eventId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+    const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
     await axios.post(
       `${apiUrl}/feedback`,
       { ...form, event: eventId, name: authUser?.name },
