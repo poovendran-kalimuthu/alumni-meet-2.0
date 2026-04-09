@@ -262,7 +262,7 @@ const HomePage = () => {
         timestamp: new Date().toISOString()
       };
 
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      // Cookies are handled automatically by the browser withCredentials
       
       
 
@@ -270,8 +270,7 @@ const HomePage = () => {
       const response = await fetch(`${apiUrl}/auth/attendance`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       });

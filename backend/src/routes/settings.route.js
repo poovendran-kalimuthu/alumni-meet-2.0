@@ -8,6 +8,6 @@ const router = express.Router();
 router.get("/", getSettings);
 
 // Protected for admin panel
-router.patch("/", updateSettings);
+router.patch("/", protectRoute, updateSettings);
 
 export default router;

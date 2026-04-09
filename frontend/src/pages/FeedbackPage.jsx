@@ -26,12 +26,8 @@ const FeedbackPage = ({ eventId }) => {
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
     await axios.post(
       `${apiUrl}/feedback`,
-      { ...form, event: eventId },
-      {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      }
+      { ...form, event: eventId, name: authUser?.name },
+      { withCredentials: true }
     );
 
     alert("Feedback submitted ❤️");
@@ -41,7 +37,7 @@ const FeedbackPage = ({ eventId }) => {
     <form onSubmit={handleSubmit} className="space-y-6">
 
       {/* USER NAME AUTO */}
-      <input value={authUser.name} readOnly className="input-field p-3" />
+      <input value={authUser?.name || "Guest"} readOnly className="input-field p-3" />
 
       <select onChange={(e) => setForm({ ...form, experience: e.target.value })}>
         <option>Excellent</option>
