@@ -32,7 +32,7 @@ export const useAuthStore = create((set) => ({
             set({ authUser: res.data })
             toast.success("Account Created Successfully !!")
         } catch (error) {
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Signup failed")
         }
         finally {
             set({ isSigningUp: false })
@@ -47,7 +47,7 @@ export const useAuthStore = create((set) => ({
             set({ authUser: res.data })
             toast.success("Logged In Succesfully")
         } catch (error) {
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Login failed")
         } finally {
             set({ isLoggingIn: false });
         }
@@ -59,7 +59,7 @@ export const useAuthStore = create((set) => ({
             set({ authUser: null });
             toast.success("Logged out Successfully")
         } catch (error) {
-            toast.error(error.response.data.message);
+            toast.error(error.response?.data?.message || "Logout failed");
 
         }
     },

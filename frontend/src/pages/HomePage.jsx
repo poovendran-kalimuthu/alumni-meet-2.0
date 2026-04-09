@@ -286,7 +286,8 @@ const HomePage = () => {
 
     } catch (error) {
       console.error('Submission error:', error);
-      toast.error(error.message || "Failed to post attendance", {
+      const errorMessage = error.response?.data?.message || error.message || "Failed to post attendance";
+      toast.error(errorMessage, {
         position: "top-center",
         autoClose: 5000,
       });

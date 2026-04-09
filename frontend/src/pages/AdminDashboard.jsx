@@ -120,7 +120,11 @@ const AdminDashboard = () => {
         s._id === studentId ? { ...s, hasAttended: newStatus === "present", attendedAt: new Date().toISOString() } : s
       ));
       setEditingStudent(null);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error(err);
+      const errorMessage = err.response?.data?.message || "Failed to update attendance";
+      toast.error(errorMessage);
+    }
   };
 
   const loadSettings = async () => {
@@ -156,7 +160,8 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Update settings error:", err);
-      toast.error("Failed to update settings.");
+      const errorMessage = err.response?.data?.message || "Failed to update settings.";
+      toast.error(errorMessage);
     } finally {
       setIsSavingSettings(false);
     }
