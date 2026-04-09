@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FiUser, FiLock, FiEye, FiEyeOff, FiAlertCircle, FiShield, FiKey, FiArrowRight } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import { axiosInstance } from "../lib/axios";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -31,18 +32,13 @@ const AdminLogin = () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
-      const response = await fetch(`${apiUrl}/auth/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.username, password: formData.password })
+      const response = await axiosInstance.post("/auth/admin/login", { 
+        email: formData.username, 
+        password: formData.password 
       });
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (!response.ok) {
-        throw new Error(result.message || "Access Denied: Invalid administrator credentials");
-      }
 
       setSuccess(true);
       localStorage.setItem("admin_token", "jwt-token-placeholder"); // Token is handled via cookies in this app's architecture

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 import { 
   FiSearch, FiDownload, FiUsers, FiCheckCircle, 
   FiXCircle, FiRefreshCw, FiActivity, FiLayers, FiClock, 
@@ -48,8 +48,7 @@ const AdminDashboard = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
-      const res = await axios.get(`${apiUrl}/auth/users`, { withCredentials: true });
+      const res = await axiosInstance.get("/auth/users");
       setStudents(res.data.data);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -113,11 +112,9 @@ const AdminDashboard = () => {
 
   const updateAttendance = async (studentId, newStatus) => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
-      await axios.patch(
-        `${apiUrl}/auth/users/${studentId}/attendance`,
-        { hasAttended: newStatus === "present" },
-        { withCredentials: true }
+      await axiosInstance.patch(
+        `/auth/users/${studentId}/attendance`,
+        { hasAttended: newStatus === "present" }
       );
       setStudents(prev => prev.map(s => 
         s._id === studentId ? { ...s, hasAttended: newStatus === "present", attendedAt: new Date().toISOString() } : s
@@ -129,8 +126,7 @@ const AdminDashboard = () => {
   const loadSettings = async () => {
     setSettingsLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
-      const res = await axios.get(`${apiUrl}/settings`);
+      const res = await axiosInstance.get("/settings");
       if (res.data.success) {
         setSettings(prev => ({
           ...prev,
@@ -153,8 +149,7 @@ const AdminDashboard = () => {
     }
     setIsSavingSettings(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
-      const res = await axios.patch(`${apiUrl}/settings`, settings, { withCredentials: true });
+      const res = await axiosInstance.patch("/settings", settings);
       if (res.data.success) {
         toast.success("Settings updated successfully!");
         setSettings(res.data.data);

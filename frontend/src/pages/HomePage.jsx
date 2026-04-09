@@ -1,7 +1,6 @@
 // HomePage.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useAuthStore } from '../store/useAuthStore';
+import { axiosInstance } from '../lib/axios';
 import toast from "react-hot-toast";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -46,7 +45,7 @@ const HomePage = () => {
     const fetchSettings = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
-        const res = await axios.get(`${apiUrl}/settings`);
+        const res = await axiosInstance.get("/settings");
         if (res.data.success) {
           setEventSettings(res.data.data);
         }
@@ -266,20 +265,12 @@ const HomePage = () => {
       
       
 
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
-      const response = await fetch(`${apiUrl}/auth/attendance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
 
-      const result = await response.json();
+      const response = await axiosInstance.post("/auth/attendance", payload);
+      const result = response.data;
 
-      if (!response.ok) {
-        throw new Error(result.message || "Attendance posting failed");
-      }
+      // axios throws on non-2xx responses by default, so we don't need to manually check response.ok
+      // unless we want specific error handling here.
 
       toast.success("Attendance Posted Successfully!", {
         position: "top-center",
