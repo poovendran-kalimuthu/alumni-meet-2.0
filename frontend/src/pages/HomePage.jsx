@@ -1,6 +1,7 @@
 // HomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { axiosInstance } from '../lib/axios';
+import { useAuthStore } from '../store/useAuthStore';
 import toast from "react-hot-toast";
 import 'react-toastify/dist/ReactToastify.css';
 
