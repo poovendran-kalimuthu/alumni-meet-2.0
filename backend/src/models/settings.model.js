@@ -22,6 +22,18 @@ const settingsSchema = new mongoose.Schema(
       required: true,
       default: true,
     },
+    eventName: {
+      type: String,
+      default: "Alumni Meet - 2026",
+    },
+    eventLocationName: {
+      type: String,
+      default: "College Campus",
+    },
+    eventDateTime: {
+      type: String,
+      default: "April 08, 2026",
+    },
     locationPresets: {
       type: [
         {

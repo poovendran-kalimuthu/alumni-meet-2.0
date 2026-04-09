@@ -25,6 +25,9 @@ const AdminDashboard = () => {
     lng: 77.035257,
     radius: 200,
     isAttendanceEnabled: true,
+    eventName: "Alumni Meet - 2026",
+    eventLocationName: "College Campus",
+    eventDateTime: "April 08, 2026",
     locationPresets: []
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -314,6 +317,48 @@ const AdminDashboard = () => {
                             >
                                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${settings.isAttendanceEnabled ? 'left-7' : 'left-1'}`}></div>
                             </button>
+                         </div>
+                      </div>
+
+                      {/* Event Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-6 pt-4">
+                         <div className="space-y-3">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                               <FiFileText className="text-indigo-500" /> Event Name
+                            </label>
+                            <input 
+                               type="text" 
+                               value={settings.eventName}
+                               onChange={(e) => setSettings({...settings, eventName: e.target.value})}
+                               placeholder="e.g. Alumni Meet - 2.0"
+                               className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                            />
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                  <FiMapPin className="text-indigo-500" /> Location Description
+                               </label>
+                               <input 
+                                  type="text" 
+                                  value={settings.eventLocationName}
+                                  onChange={(e) => setSettings({...settings, eventLocationName: e.target.value})}
+                                  placeholder="e.g. Seminar Hall"
+                                  className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                               />
+                            </div>
+                            <div className="space-y-3">
+                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                  <FiClock className="text-indigo-500" /> Date & Time
+                               </label>
+                               <input 
+                                  type="text" 
+                                  value={settings.eventDateTime}
+                                  onChange={(e) => setSettings({...settings, eventDateTime: e.target.value})}
+                                  placeholder="e.g. 06 April, 10:00 AM"
+                                  className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                               />
+                            </div>
                          </div>
                       </div>
 

@@ -18,7 +18,7 @@ export const getSettings = async (req, res) => {
 
 export const updateSettings = async (req, res) => {
   try {
-    const { lat, lng, radius, isAttendanceEnabled, locationPresets } = req.body;
+    const { lat, lng, radius, isAttendanceEnabled, locationPresets, eventName, eventLocationName, eventDateTime } = req.body;
     
     // Numeric validation
     if (lat !== undefined && isNaN(lat)) return res.status(400).json({ success: false, message: "Invalid Latitude" });
@@ -34,6 +34,10 @@ export const updateSettings = async (req, res) => {
       settings.radius = radius !== undefined ? radius : settings.radius;
       settings.isAttendanceEnabled = isAttendanceEnabled !== undefined ? isAttendanceEnabled : settings.isAttendanceEnabled;
       settings.locationPresets = locationPresets !== undefined ? locationPresets : settings.locationPresets;
+      settings.eventName = eventName !== undefined ? eventName : settings.eventName;
+      settings.eventLocationName = eventLocationName !== undefined ? eventLocationName : settings.eventLocationName;
+      settings.eventDateTime = eventDateTime !== undefined ? eventDateTime : settings.eventDateTime;
+      
       if (locationPresets !== undefined) settings.markModified('locationPresets');
     }
 
