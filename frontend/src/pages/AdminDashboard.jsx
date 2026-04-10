@@ -4,7 +4,8 @@ import {
   FiSearch, FiDownload, FiUsers, FiCheckCircle, 
   FiXCircle, FiRefreshCw, FiActivity, FiLayers, FiClock, 
   FiEdit2, FiSave, FiX, FiCommand, FiFileText, FiServer, FiShield,
-  FiSettings, FiMapPin, FiToggleRight, FiToggleLeft
+  FiSettings, FiMapPin, FiToggleRight, FiToggleLeft, FiArrowLeft, FiMoreVertical,
+  FiCopy, FiExternalLink
 } from "react-icons/fi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -19,20 +20,24 @@ const AdminDashboard = () => {
   const [editingStatus, setEditingStatus] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  const [activeTab, setActiveTab] = useState("registry");
-  const [settings, setSettings] = useState({
+  const [activeTab, setActiveTab] = useState("overview"); // overview, sessions, session-detail
+  const [sessions, setSessions] = useState([]);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [sessionAttendance, setSessionAttendance] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState("registry"); // registry, settings
+  
+  const [sessionFormData, setSessionFormData] = useState({
+    name: "",
+    locationName: "",
+    dateTime: "",
     lat: 10.654281,
     lng: 77.035257,
     radius: 200,
-    isAttendanceEnabled: true,
-    eventName: "Alumni Meet - 2026",
-    eventLocationName: "College Campus",
-    eventDateTime: "April 08, 2026",
-    locationPresets: []
+    isAttendanceEnabled: true
   });
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [newPreset, setNewPreset] = useState({ name: "", lat: "", lng: "" });
+
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const link = document.createElement('link');
@@ -40,7 +45,7 @@ const AdminDashboard = () => {
     link.rel = 'stylesheet';
     document.head.appendChild(link);
     loadUsers();
-    loadSettings();
+    loadSessions();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -57,585 +62,729 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- ENHANCED PDF EXPORT ---
+  const loadSessions = async () => {
+    setSessionsLoading(true);
+    try {
+      const res = await axiosInstance.get("/sessions");
+      if (res.data.success) {
+        setSessions(res.data.data);
+      }
+    } catch (err) {
+      console.error("Fetch sessions error:", err);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const loadSessionAttendance = async (sessionId) => {
+    if (!sessionId) return;
+    try {
+      const res = await axiosInstance.get(`/sessions/${sessionId}/attendance`);
+      if (res.data.success) {
+        setSessionAttendance(res.data.data);
+      }
+    } catch (err) {
+      console.error("Fetch session attendance error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      loadSessionAttendance(selectedSessionId);
+      const session = sessions.find(s => s._id === selectedSessionId);
+      if (session) setSessionFormData(session);
+    }
+  }, [selectedSessionId, sessions]);
+
+  const selectedSession = useMemo(() => 
+    sessions.find(s => s._id === selectedSessionId), 
+    [sessions, selectedSessionId]
+  );
+
+  const handleSessionSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      if (selectedSessionId) {
+        const res = await axiosInstance.patch(`/sessions/${selectedSessionId}`, sessionFormData);
+        if (res.data.success) {
+          toast.success("Session updated successfully!");
+          setSessions(prev => prev.map(s => s._id === selectedSessionId ? res.data.data : s));
+        }
+      } else {
+        const res = await axiosInstance.post("/sessions", sessionFormData);
+        if (res.data.success) {
+          toast.success("Session created successfully!");
+          setSessions(prev => [res.data.data, ...prev]);
+          setActiveTab("sessions");
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save session");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleSessionStatus = async (session) => {
+    try {
+      const res = await axiosInstance.patch(`/sessions/${session._id}`, { isAttendanceEnabled: !session.isAttendanceEnabled });
+      if (res.data.success) {
+        setSessions(prev => prev.map(s => s._id === session._id ? res.data.data : s));
+        toast.success(`Session ${res.data.data.isAttendanceEnabled ? 'Enabled' : 'Disabled'}`);
+      }
+    } catch (err) {
+      toast.error("Failed to toggle status");
+    }
+  };
+
+  const handleDeleteSession = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this session? All associated attendance records will be lost.")) return;
+    try {
+      const res = await axiosInstance.delete(`/sessions/${id}`);
+      if (res.data.success) {
+        toast.success("Session deleted");
+        setSessions(prev => prev.filter(s => s._id !== id));
+        setSelectedSessionId(null);
+        setActiveTab("sessions");
+      }
+    } catch (err) {
+      toast.error("Failed to delete session");
+    }
+  };
+
+  const copySessionLink = (id) => {
+    const url = `${window.location.origin}/session/${id}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Session link copied to clipboard!");
+  };
+
+  const updateAttendance = async (studentId, newStatus) => {
+    if (!selectedSessionId) return;
+    try {
+      await axiosInstance.post(
+        `/sessions/${selectedSessionId}/attendance/manual`,
+        { 
+          sessionId: selectedSessionId,
+          userId: studentId,
+          status: newStatus 
+        }
+      );
+      toast.success("Attendance updated");
+      loadSessionAttendance(selectedSessionId);
+      setEditingStudent(null);
+    } catch (err) { 
+      toast.error(err.response?.data?.message || "Failed to update attendance");
+    }
+  };
+
   const exportToPDF = () => {
+    if (!selectedSession) return;
     const doc = new jsPDF();
-    
-    // Header Branding
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.setTextColor(20, 30, 70);
-    doc.text("Dr. Mahalingam College of Engineering and Technology", 105, 20, { align: "center" });
+    doc.text("SPECTRUM Attendance Report", 105, 20, { align: "center" });
+    doc.setFontSize(12);
+    doc.text(`Session: ${selectedSession.name}`, 105, 30, { align: "center" });
+    doc.text(`Location: ${selectedSession.locationName} | Date: ${selectedSession.dateTime}`, 105, 37, { align: "center" });
     
-    doc.setFontSize(14);
-    doc.setTextColor(67, 24, 255);
-    doc.text("ECE Department Association - SPECTRUM", 105, 30, { align: "center" });
-    
-    doc.setDrawColor(200, 200, 200);
-    doc.line(20, 35, 190, 35);
-
-    // Metadata
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Report Type: Attendance Verification`, 20, 45);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 190, 45, { align: "right" });
-
-    const tableColumn = ["Roll No", "Student Name", "Class", "Status", "Last Log"];
-    const tableRows = filteredStudents.map(s => [
-      s.rollNo,
-      s.name,
-      s.className,
-      s.hasAttended ? "PRESENT" : "ABSENT",
-      s.attendedAt ? new Date(s.attendedAt).toLocaleTimeString() : "N/A"
-    ]);
+    const tableColumn = ["Roll No", "Student Name", "Class", "Status", "Verified At"];
+    const tableRows = filteredStudents.map(s => {
+      const att = getAttendanceForUser(s._id);
+      return [
+        s.rollNo,
+        s.name,
+        s.className,
+        att ? "PRESENT" : "ABSENT",
+        att ? new Date(att.timestamp).toLocaleTimeString() : "-"
+      ];
+    });
 
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 50,
-      theme: 'striped',
-      headStyles: { fillColor: [43, 54, 116], textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { font: 'helvetica', fontSize: 9 },
-      columnStyles: {
-        3: { fontStyle: 'bold' }
-      }
+      startY: 45,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] }
     });
-
-    // Footer
-    const finalY = doc.lastAutoTable.finalY || 50;
-    doc.setFontSize(8);
-    doc.text("Generated by SPECTRUM System Integrity Module", 105, finalY + 20, { align: "center" });
-
-    doc.save(`SPECTRUM_Attendance_${new Date().toLocaleDateString()}.pdf`);
+    doc.save(`Attendance_${selectedSession.name.replace(/\s+/g, '_')}.pdf`);
   };
 
-  const updateAttendance = async (studentId, newStatus) => {
-    try {
-      await axiosInstance.patch(
-        `/auth/users/${studentId}/attendance`,
-        { hasAttended: newStatus === "present" }
-      );
-      setStudents(prev => prev.map(s => 
-        s._id === studentId ? { ...s, hasAttended: newStatus === "present", attendedAt: new Date().toISOString() } : s
-      ));
-      setEditingStudent(null);
-    } catch (err) { 
-      console.error(err);
-      const errorMessage = err.response?.data?.message || "Failed to update attendance";
-      toast.error(errorMessage);
-    }
+  const getAttendanceForUser = (userId) => {
+    return sessionAttendance.find(a => (a.userId?._id || a.userId) === userId);
   };
 
-  const loadSettings = async () => {
-    setSettingsLoading(true);
-    try {
-      const res = await axiosInstance.get("/settings");
-      if (res.data.success) {
-        setSettings(prev => ({
-          ...prev,
-          ...res.data.data,
-          locationPresets: res.data.data.locationPresets || []
-        }));
-      }
-    } catch (err) {
-      console.error("Fetch settings error:", err);
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
-  const handleUpdateSettings = async (e) => {
-    e.preventDefault();
-    if (isNaN(settings.lat) || isNaN(settings.lng) || isNaN(settings.radius)) {
-      toast.error("Invalid coordinates or radius. Please check your inputs.");
-      return;
-    }
-    setIsSavingSettings(true);
-    try {
-      const res = await axiosInstance.patch("/settings", settings);
-      if (res.data.success) {
-        toast.success("Settings updated successfully!");
-        setSettings(res.data.data);
-      }
-    } catch (err) {
-      console.error("Update settings error:", err);
-      const errorMessage = err.response?.data?.message || "Failed to update settings.";
-      toast.error(errorMessage);
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  const handleAddPreset = () => {
-    if (!newPreset.name || !newPreset.lat || !newPreset.lng) {
-      toast.error("Please fill all preset fields");
-      return;
-    }
-    const updatedPresets = [...(settings.locationPresets || []), {
-      name: newPreset.name,
-      lat: parseFloat(newPreset.lat),
-      lng: parseFloat(newPreset.lng)
-    }];
-    setSettings({ ...settings, locationPresets: updatedPresets });
-    setNewPreset({ name: "", lat: "", lng: "" });
-    toast.success("Preset added to list. Don't forget to save!");
-  };
-
-  const handleRemovePreset = (index) => {
-    const updatedPresets = settings.locationPresets.filter((_, i) => i !== index);
-    setSettings({ ...settings, locationPresets: updatedPresets });
-  };
-
-  const handleApplyPreset = (preset) => {
-    setSettings({ 
-      ...settings, 
-      lat: preset.lat, 
-      lng: preset.lng 
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const attendance = getAttendanceForUser(s._id);
+      const isPresent = !!attendance;
+      const matchesSearch = s.name?.toLowerCase().includes(search.toLowerCase()) || 
+                            s.rollNo?.toString().includes(search);
+      const matchesStatus = statusFilter === "all" || (statusFilter === "present" ? isPresent : !isPresent);
+      return matchesSearch && matchesStatus;
     });
-    toast.success(`Applied ${preset.name} coordinates`);
-  };
-
-  const filteredStudents = students.filter(s => {
-    const matchesSearch = s.name?.toLowerCase().includes(search.toLowerCase()) || s.rollNo?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || (statusFilter === "present" ? s.hasAttended : !s.hasAttended);
-    return matchesSearch && matchesStatus;
-  });
+  }, [students, sessionAttendance, search, statusFilter]);
 
   const stats = useMemo(() => {
     const total = students.length;
-    const present = students.filter(s => s.hasAttended).length;
-    return { total, present, absent: total - present, rate: total > 0 ? ((present / total) * 100).toFixed(1) : 0 };
-  }, [students]);
+    const present = sessionAttendance.length;
+    return { 
+      total, 
+      present, 
+      absent: total - present, 
+      rate: total > 0 ? ((present / total) * 100).toFixed(1) : 0 
+    };
+  }, [students, sessionAttendance]);
 
-  if (loading) return <div className="min-h-screen bg-[#F4F7FE] flex items-center justify-center font-['Space_Grotesk'] text-indigo-600 font-bold animate-pulse">Initializing SPECTRUM...</div>;
+  if (loading) return <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center font-['Space_Grotesk'] text-indigo-600 font-bold animate-pulse">Loading Infrastructure...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] font-['Space_Grotesk'] flex flex-col lg:flex-row overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] font-['Space_Grotesk'] flex overflow-hidden">
       
-      {/* --- Sidebar --- */}
-      <aside className="w-72 bg-[#0F172A] p-8 hidden lg:flex flex-col text-white relative shadow-2xl">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-        
+      {/* Sidebar */}
+      <aside className="w-72 bg-[#0F172A] p-8 hidden lg:flex flex-col text-white relative shadow-2xl shrink-0">
         <div className="flex items-center gap-3 mb-12 border-b border-white/5 pb-8">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
             <FiShield className="text-white text-xl" />
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight">SPECTRUM</h1>
-            <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-[0.2em] opacity-80">Admin Console</p>
+            <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-[0.2em] opacity-80">Admin Workspace</p>
           </div>
         </div>
 
         <nav className="space-y-2 flex-1">
-          <SidebarLink icon={<FiLayers />} label="Overview" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} />
-          <SidebarLink icon={<FiUsers />} label="Registry" active={activeTab === "registry"} onClick={() => setActiveTab("registry")} />
-          <SidebarLink icon={<FiSettings />} label="Settings" active={activeTab === "settings"} onClick={() => setActiveTab("settings")} />
-          <SidebarLink icon={<FiActivity />} label="Analytics" />
-          <SidebarLink icon={<FiServer />} label="Infrastructure" />
+          <SidebarLink icon={<FiLayers />} label="Global Overview" active={activeTab === "overview"} onClick={() => { setActiveTab("overview"); setSelectedSessionId(null); }} />
+          <SidebarLink icon={<FiCommand />} label="Sessions Gallery" active={activeTab === "sessions"} onClick={() => { setActiveTab("sessions"); setSelectedSessionId(null); }} />
+          
+          {selectedSessionId && (
+            <div className="pt-6 mt-6 border-t border-white/5 space-y-2">
+              <p className="px-5 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Active Workspace</p>
+              <SidebarLink icon={<FiUsers />} label="Session Registry" active={activeTab === "session-detail" && workspaceTab === "registry"} onClick={() => { setActiveTab("session-detail"); setWorkspaceTab("registry"); }} />
+              <SidebarLink icon={<FiSettings />} label="Session Settings" active={activeTab === "session-detail" && workspaceTab === "settings"} onClick={() => { setActiveTab("session-detail"); setWorkspaceTab("settings"); }} />
+            </div>
+          )}
         </nav>
 
-        <div className="mt-auto p-5 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
-          <p className="text-[10px] text-indigo-300 mb-2 font-bold uppercase tracking-widest flex items-center gap-2">
-            <FiClock className="animate-pulse" /> System Time
-          </p>
+        <div className="mt-auto p-5 bg-white/5 rounded-2xl border border-white/5">
+          <p className="text-[10px] text-indigo-300 mb-2 font-bold uppercase">System Time</p>
           <p className="text-xl font-bold font-mono tracking-tighter">
             {currentTime.toLocaleTimeString([], { hour12: false })}
           </p>
         </div>
       </aside>
 
-      {/* --- Main Content --- */}
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
-        {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-[#F8FAFC]">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full border border-emerald-100">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Network Active</span>
+             {selectedSessionId && (
+               <button 
+                onClick={() => { setSelectedSessionId(null); setActiveTab("sessions"); }}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"
+               >
+                 <FiArrowLeft size={20} />
+               </button>
+             )}
+             <div>
+               <h2 className="text-sm font-semibold text-slate-400">
+                 {selectedSessionId ? `Workspace / ${selectedSession?.name}` : activeTab === "overview" ? "Dashboard / Overview" : "Dashboard / Gallery"}
+               </h2>
+               {selectedSessionId && <p className="text-lg font-bold text-slate-800">{selectedSession?.locationName}</p>}
              </div>
-             <h2 className="text-sm font-semibold text-slate-400 hidden md:block">/ Dashboard / Overview</h2>
           </div>
-          
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:w-64">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search registry..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400" 
-              />
-            </div>
+
+          <div className="flex items-center gap-3">
+            {activeTab === "session-detail" && (
+              <button 
+                onClick={exportToPDF} 
+                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all"
+              >
+                <FiDownload /> Export PDF
+              </button>
+            )}
             <button 
-              onClick={exportToPDF} 
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+              onClick={() => { loadUsers(); loadSessions(); }} 
+              className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors shadow-sm"
             >
-              <FiDownload /> Export
-            </button>
-            <button 
-              onClick={loadUsers} 
-              className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors"
-            >
-              <FiRefreshCw className={loading || settingsLoading ? "animate-spin" : ""} />
+              <FiRefreshCw className={sessionsLoading ? "animate-spin" : ""} />
             </button>
           </div>
         </header>
 
-        <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
-          {activeTab === "settings" ? (
-             <div className="max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden p-8 sm:p-10">
-                   <div className="mb-10">
-                      <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                           <FiSettings />
-                        </div>
-                        System Configurations
-                      </h3>
-                      <p className="text-slate-500 mt-2 text-sm font-medium">Manage deployment parameters and attendance availability protocol</p>
-                   </div>
+        <main className="p-8 max-w-[1400px] mx-auto w-full space-y-8">
+          
+          {/* View: Overview (Global) */}
+          {activeTab === "overview" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard label="Total Students" value={students.length} icon={<FiUsers />} trend="Registry" color="bg-indigo-600" />
+                <StatCard label="Active Sessions" value={sessions.filter(s => s.isAttendanceEnabled).length} icon={<FiActivity />} trend="Live" color="bg-emerald-500" />
+                <StatCard label="Total Saved Events" value={sessions.length} icon={<FiLayers />} trend="Archived" color="bg-amber-500" />
+                <StatCard label="Network Latency" value="24ms" icon={<FiServer />} trend="Stable" color="bg-blue-500" />
+              </div>
 
-                   <form onSubmit={handleUpdateSettings} className="space-y-10">
-                      {/* Attendance Control */}
-                      <div className="bg-slate-50 rounded-3xl p-6 sm:p-8 border border-slate-100 group transition-all hover:border-indigo-100">
-                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition-all ${settings.isAttendanceEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
-                                  {settings.isAttendanceEnabled ? <FiToggleRight size={24} /> : <FiToggleLeft size={24} />}
-                               </div>
-                               <div>
-                                  <h4 className="font-bold text-slate-800">Attendance Availability</h4>
-                                  <p className="text-xs text-slate-400 font-medium tracking-tight">Toggle the global attendance marking system</p>
-                               </div>
-                            </div>
-                            <button 
-                               type="button"
-                               onClick={() => setSettings({...settings, isAttendanceEnabled: !settings.isAttendanceEnabled})}
-                               className={`w-14 h-8 rounded-full transition-all relative ${settings.isAttendanceEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                            >
-                               <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${settings.isAttendanceEnabled ? 'left-7' : 'left-1'}`}></div>
-                            </button>
-                         </div>
-                      </div>
-
-                      {/* Event Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-1 gap-6 pt-4">
-                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                               <FiFileText className="text-indigo-500" /> Event Name
-                            </label>
-                            <input 
-                               type="text" 
-                               value={settings.eventName}
-                               onChange={(e) => setSettings({...settings, eventName: e.target.value})}
-                               placeholder="e.g. Alumni Meet - 2.0"
-                               className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                            />
-                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                  <FiMapPin className="text-indigo-500" /> Location Description
-                               </label>
-                               <input 
-                                  type="text" 
-                                  value={settings.eventLocationName}
-                                  onChange={(e) => setSettings({...settings, eventLocationName: e.target.value})}
-                                  placeholder="e.g. Seminar Hall"
-                                  className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                               />
-                            </div>
-                            <div className="space-y-3">
-                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                  <FiClock className="text-indigo-500" /> Date & Time
-                               </label>
-                               <input 
-                                  type="text" 
-                                  value={settings.eventDateTime}
-                                  onChange={(e) => setSettings({...settings, eventDateTime: e.target.value})}
-                                  placeholder="e.g. 06 April, 10:00 AM"
-                                  className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                               />
-                            </div>
-                         </div>
-                      </div>
-
-                      {/* Location Coordinates */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                               <FiMapPin className="text-indigo-500" /> Venue Latitude
-                            </label>
-                            <input 
-                               type="number" 
-                               step="0.000001"
-                               value={settings.lat}
-                               onChange={(e) => setSettings({...settings, lat: parseFloat(e.target.value)})}
-                               className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                            />
-                         </div>
-                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                               <FiMapPin className="text-indigo-500" /> Venue Longitude
-                            </label>
-                            <input 
-                               type="number" 
-                               step="0.000001"
-                               value={settings.lng}
-                               onChange={(e) => setSettings({...settings, lng: parseFloat(e.target.value)})}
-                               className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                            />
-                         </div>
-                      </div>
-
-                      {/* Location Presets */}
-                      <div className="space-y-6 pt-4">
-                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                             <FiLayers className="text-indigo-500" /> Saved Locations (Presets)
-                         </label>
-                         
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                             <input 
-                                type="text" 
-                                placeholder="Location Name (e.g. Lab 1)"
-                                value={newPreset.name}
-                                onChange={(e) => setNewPreset({...newPreset, name: e.target.value})}
-                                className="bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
-                             />
-                             <input 
-                                type="number" 
-                                placeholder="Lat"
-                                value={newPreset.lat}
-                                onChange={(e) => setNewPreset({...newPreset, lat: e.target.value})}
-                                className="bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
-                             />
-                             <div className="flex gap-2">
-                                <input 
-                                    type="number" 
-                                    placeholder="Lng"
-                                    value={newPreset.lng}
-                                    onChange={(e) => setNewPreset({...newPreset, lng: e.target.value})}
-                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
-                                />
-                                <button 
-                                    type="button"
-                                    onClick={handleAddPreset}
-                                    className="px-4 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all"
-                                >
-                                    <FiCommand />
-                                </button>
-                             </div>
-                         </div>
-
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                            {settings.locationPresets?.map((p, idx) => (
-                               <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between group hover:border-indigo-200 transition-all shadow-sm">
-                                  <div className="flex items-center gap-3">
-                                     <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
-                                        <FiMapPin size={14} />
-                                     </div>
-                                     <div>
-                                        <p className="text-xs font-bold text-slate-700">{p.name}</p>
-                                        <p className="text-[9px] text-slate-400 font-medium">{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</p>
-                                     </div>
-                                  </div>
-                                  <div className="flex gap-1.5">
-                                     <button 
-                                        type="button"
-                                        onClick={() => handleApplyPreset(p)}
-                                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all text-[10px] font-bold"
-                                     >
-                                        Apply
-                                     </button>
-                                     <button 
-                                        type="button"
-                                        onClick={() => handleRemovePreset(idx)}
-                                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                                     >
-                                        <FiX size={14} />
-                                     </button>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      </div>
-
-                      {/* Radius Control */}
-                      <div className="space-y-3 pt-4">
-                         <div className="flex justify-between items-center mb-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Validation Perimeter (Radius)</label>
-                            <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-                               {settings.radius} Meters
-                            </span>
-                         </div>
-                         <input 
-                            type="range" 
-                            min="20" 
-                            max="2000" 
-                            step="10"
-                            value={settings.radius}
-                            onChange={(e) => setSettings({...settings, radius: parseInt(e.target.value)})}
-                            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                         />
-                         <div className="flex justify-between text-[10px] font-bold text-slate-300 uppercase tracking-tighter mt-1 px-1">
-                            <span>Inner Circle (20m)</span>
-                            <span>Standard (200m)</span>
-                            <span>Extended (2km)</span>
-                         </div>
-                      </div>
-
-                      <div className="pt-8 border-t border-slate-100">
-                         <button 
-                            type="submit" 
-                            disabled={isSavingSettings}
-                            className="w-full sm:w-auto px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50"
-                         >
-                            {isSavingSettings ? (
-                               <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                            ) : (
-                               <>
-                                  <FiSave /> Securely Commit Changes
-                               </>
-                            )}
-                         </button>
-                      </div>
-                   </form>
+              <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-slate-800">Quick Switch Workspace</h3>
+                  <button onClick={() => setActiveTab("sessions")} className="text-sm font-bold text-indigo-600 hover:underline">View All Gallery</button>
                 </div>
-             </div>
-          ) : (
-          <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard label="Registry Total" value={stats.total} icon={<FiUsers />} trend="+4.2%" color="bg-indigo-600" />
-              <StatCard label="Verified Present" value={stats.present} icon={<FiCheckCircle />} trend="Live" color="bg-emerald-500" />
-              <StatCard label="Pending Status" value={stats.absent} icon={<FiXCircle />} trend="Action Required" color="bg-rose-500" />
-              <StatCard label="Total Yield" value={`${stats.rate}%`} icon={<FiActivity />} trend="Stable" color="bg-amber-500" />
-            </div>
-
-            {/* Registry Section */}
-          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">Student Registry Feed</h3>
-                <p className="text-xs text-slate-500 font-medium">Real-time attendance & verification tracking</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sessions.slice(0, 6).map(session => (
+                    <div 
+                      key={session._id} 
+                      onClick={() => { setSelectedSessionId(session._id); setActiveTab("session-detail"); setWorkspaceTab("registry"); }}
+                      className="cursor-pointer p-5 bg-slate-50 hover:bg-indigo-50 border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-slate-800 group-hover:text-indigo-600">{session.name}</h4>
+                        <span className={`w-2 h-2 rounded-full ${session.isAttendanceEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{session.locationName}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter:</span>
-                <select 
-                  value={statusFilter} 
-                  onChange={(e) => setStatusFilter(e.target.value)} 
-                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none cursor-pointer hover:border-indigo-500 transition-colors"
+            </div>
+          )}
+
+          {/* View: Sessions Gallery */}
+          {activeTab === "sessions" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex justify-between items-center">
+                 <div>
+                   <h3 className="text-2xl font-bold text-slate-800">Sessions Gallery</h3>
+                   <p className="text-slate-500 text-sm font-medium">Select a workspace to manage attendance and configurations</p>
+                 </div>
+                 <button 
+                    onClick={() => {
+                      setSelectedSessionId(null);
+                      setSessionFormData({
+                        name: "",
+                        locationName: "",
+                        dateTime: "",
+                        lat: 10.654281,
+                        lng: 77.035257,
+                        radius: 200,
+                        isAttendanceEnabled: true
+                      });
+                      setActiveTab("session-detail");
+                      setWorkspaceTab("settings");
+                    }}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                 >
+                   <FiCommand /> New Session
+                 </button>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                 {sessions.map(session => (
+                   <div key={session._id} className="bg-white rounded-[2rem] border border-slate-200 p-7 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full -mr-12 -mt-12 group-hover:bg-indigo-500/10 transition-colors"></div>
+                     <div className="flex justify-between items-start mb-6">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${session.isAttendanceEnabled ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'}`}>
+                          <FiActivity />
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                          <span className={`w-1.5 h-1.5 rounded-full ${session.isAttendanceEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{session.isAttendanceEnabled ? 'Active' : 'Offline'}</span>
+                        </div>
+                     </div>
+                     <h4 className="text-xl font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{session.name}</h4>
+                     <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-6 flex items-center gap-2">
+                       <FiMapPin /> {session.locationName}
+                     </p>
+                     
+                     <div className="grid grid-cols-2 gap-4 mb-8">
+                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                         <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Date Time</p>
+                         <p className="text-xs font-bold text-slate-700 truncate">{session.dateTime}</p>
+                       </div>
+                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                         <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Perimeter</p>
+                         <p className="text-xs font-bold text-slate-700">{session.radius}m Radius</p>
+                       </div>
+                     </div>
+
+                     <div className="flex gap-3 mt-auto relative z-10">
+                       <button 
+                         onClick={() => { setSelectedSessionId(session._id); setActiveTab("session-detail"); setWorkspaceTab("registry"); }}
+                         className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/10 active:scale-95"
+                       >
+                         Open Workspace
+                       </button>
+                       <button 
+                         onClick={() => copySessionLink(session._id)}
+                         className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all"
+                         title="Copy Session Link"
+                       >
+                         <FiCopy />
+                       </button>
+                       <button 
+                          onClick={() => toggleSessionStatus(session)}
+                          className={`px-4 py-3 rounded-xl border transition-all ${session.isAttendanceEnabled ? 'border-rose-100 text-rose-500 hover:bg-rose-50' : 'border-emerald-100 text-emerald-500 hover:bg-emerald-50'}`}
+                       >
+                         {session.isAttendanceEnabled ? <FiXCircle /> : <FiCheckCircle />}
+                       </button>
+                     </div>
+                   </div>
+                 ))}
+                 
+                 {sessions.length === 0 && !sessionsLoading && (
+                    <div className="col-span-full py-20 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center">
+                      <FiCommand className="mx-auto text-slate-200 text-5xl mb-6" />
+                      <p className="text-slate-500 font-bold text-lg">Your Gallery is Empty</p>
+                      <p className="text-slate-400 text-sm mt-2 max-w-xs mx-auto">Create your first attendance session to begin orchestrating verification events.</p>
+                      <button onClick={() => { setActiveTab("session-detail"); setWorkspaceTab("settings"); }} className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-xl shadow-indigo-600/20">Initialize Now</button>
+                    </div>
+                 )}
+               </div>
+            </div>
+          )}
+
+          {/* View: Session Workspace (Drill-down) */}
+          {activeTab === "session-detail" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+              
+              {/* Workspace Header Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <StatCard label="Total Expected" value={stats.total} icon={<FiUsers />} trend="Registry" color="bg-slate-800" />
+                <StatCard label="Verified Present" value={stats.present} icon={<FiCheckCircle />} trend="Live" color="bg-emerald-500" />
+                <StatCard label="Pending Attendance" value={stats.absent} icon={<FiXCircle />} trend="Action Required" color="bg-rose-500" />
+                <StatCard label="Attendance Yield" value={`${stats.rate}%`} icon={<FiActivity />} trend="Stable" color="bg-indigo-600" />
+              </div>
+
+              {/* Workspace Navigation Tabs */}
+              <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex gap-2 w-fit">
+                <button 
+                  onClick={() => setWorkspaceTab("registry")}
+                  className={`px-8 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${workspaceTab === 'registry' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:bg-slate-50'}`}
                 >
-                  <option value="all">Display All</option>
-                  <option value="present">Verified</option>
-                  <option value="absent">Pending</option>
-                </select>
+                  <FiUsers size={14} /> Attendance Registry
+                </button>
+                <button 
+                  onClick={() => setWorkspaceTab("settings")}
+                  className={`px-8 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${workspaceTab === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:bg-slate-50'}`}
+                >
+                  <FiSettings size={14} /> Session Controls
+                </button>
+                {selectedSessionId && (
+                  <button 
+                    onClick={() => copySessionLink(selectedSessionId)}
+                    className="px-8 py-2.5 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all flex items-center gap-2"
+                  >
+                    <FiCopy size={14} /> Copy Public Link
+                  </button>
+                )}
               </div>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/50">
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student Information</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll Index</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Verification Status</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.map((student) => (
-                    <tr key={student._id} className="group hover:bg-indigo-50/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center font-bold text-indigo-600 text-xs border border-indigo-100/50 group-hover:scale-110 transition-transform">
-                            {student.name.charAt(0)}
+              {/* Workspace Content: Registry */}
+              {workspaceTab === "registry" && (
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+                  <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div className="relative w-full sm:w-80">
+                      <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Filter by name or roll no..." 
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter Status:</span>
+                      <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                        {['all', 'present', 'absent'].map(f => (
+                          <button 
+                            key={f}
+                            onClick={() => setStatusFilter(f)}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${statusFilter === f ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            {f === 'all' ? 'Show All' : f === 'present' ? 'Verified' : 'Pending'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50/30">
+                          <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Student Details</th>
+                          <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Roll Index</th>
+                          <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] text-center">Verification</th>
+                          <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {filteredStudents.map(student => {
+                          const attendance = getAttendanceForUser(student._id);
+                          const isPresent = !!attendance;
+                          return (
+                            <tr key={student._id} className="group hover:bg-slate-50/80 transition-colors">
+                              <td className="px-8 py-5">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center font-bold text-indigo-600 border border-indigo-100/50 group-hover:scale-105 transition-transform">
+                                    {student.name.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-700 text-sm">{student.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{student.className}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-8 py-5">
+                                <span className="font-mono text-xs font-bold text-indigo-500 bg-indigo-50/50 px-2.5 py-1 rounded-lg border border-indigo-100/50">{student.rollNo}</span>
+                              </td>
+                              <td className="px-8 py-5">
+                                <div className="flex flex-col items-center gap-1.5">
+                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 border ${
+                                    isPresent ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isPresent ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                                    {isPresent ? 'Verified' : 'Pending'}
+                                  </span>
+                                  {isPresent && attendance.timestamp && (
+                                    <span className="text-[9px] font-mono text-slate-400 flex items-center gap-1">
+                                      <FiClock className="animate-pulse" /> {new Date(attendance.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'})}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-8 py-5 text-right">
+                                <button 
+                                  onClick={() => { setEditingStudent(student._id); setEditingStatus(isPresent ? "present" : "absent"); }}
+                                  className="p-2.5 hover:bg-white hover:shadow-md hover:text-indigo-600 rounded-xl text-slate-400 transition-all active:scale-90 border border-transparent hover:border-slate-100"
+                                >
+                                  <FiEdit2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {filteredStudents.length === 0 && (
+                    <div className="py-24 text-center">
+                      <FiSearch className="mx-auto text-slate-200 text-5xl mb-6" />
+                      <p className="text-slate-400 font-bold text-lg">No match found for "{search}"</p>
+                      <p className="text-slate-400 text-sm mt-1">Try refining your search or clearing filters</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Workspace Content: Settings */}
+              {workspaceTab === "settings" && (
+                <div className="bg-white rounded-[2rem] border border-slate-200 p-10 shadow-sm animate-in fade-in duration-300">
+                  <div className="mb-12 flex justify-between items-start">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                         <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner">
+                            <FiSettings />
+                         </div>
+                         Session Workspace Identity
+                      </h3>
+                      <p className="text-slate-500 mt-2 text-sm font-medium">Fine-tune the operational parameters and geo-fencing for this verification event</p>
+                    </div>
+                    {selectedSessionId && (
+                      <button 
+                        onClick={() => handleDeleteSession(selectedSessionId)}
+                        className="px-6 py-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2"
+                      >
+                        <FiXCircle /> Terminate Session
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSessionSubmit} className="space-y-10">
+                    <div className="bg-slate-50/50 rounded-3xl p-8 border border-slate-100 flex items-center justify-between group transition-all hover:border-indigo-100">
+                      <div className="flex items-center gap-5">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all shadow-lg ${sessionFormData.isAttendanceEnabled ? 'bg-emerald-100 text-emerald-600 shadow-emerald-500/10' : 'bg-slate-200 text-slate-500 shadow-slate-500/10'}`}>
+                            {sessionFormData.isAttendanceEnabled ? <FiToggleRight /> : <FiToggleLeft />}
                           </div>
                           <div>
-                            <p className="font-bold text-sm text-slate-700">{student.name}</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{student.className}</p>
+                            <h4 className="font-bold text-lg text-slate-800">Session Verification Logic</h4>
+                            <p className="text-xs text-slate-400 font-bold tracking-tight uppercase">Status: {sessionFormData.isAttendanceEnabled ? 'Accepting Sign-ins' : 'Verification Locked'}</p>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-xs font-bold text-indigo-500 bg-indigo-50/50 px-2 py-1 rounded-md">{student.rollNo}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex justify-center">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-                            student.hasAttended ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'
-                          }`}>
-                            <span className={`w-1 h-1 rounded-full ${student.hasAttended ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                            {student.hasAttended ? 'Verified' : 'Pending'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => { setEditingStudent(student._id); setEditingStatus(student.hasAttended ? "present" : "absent"); }} 
-                          className="p-2 hover:bg-white hover:shadow-sm hover:text-indigo-600 rounded-lg text-slate-400 transition-all active:scale-90"
-                        >
-                          <FiEdit2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {filteredStudents.length === 0 && (
-              <div className="py-20 text-center">
-                <FiUsers className="mx-auto text-slate-200 text-4xl mb-4" />
-                <p className="text-slate-400 font-medium tracking-tight">No records found matching your criteria</p>
-              </div>
-            )}
-          </div>
-          </>
-          )}
-        </div>
-      </main>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setSessionFormData({...sessionFormData, isAttendanceEnabled: !sessionFormData.isAttendanceEnabled})}
+                        className={`w-16 h-9 rounded-full relative transition-all shadow-inner ${sessionFormData.isAttendanceEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-1 w-7 h-7 bg-white rounded-full shadow-lg transition-all ${sessionFormData.isAttendanceEnabled ? 'left-8' : 'left-1'}`}></div>
+                      </button>
+                    </div>
 
-      {/* --- Quick Update Overlay --- */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="space-y-4">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                             <FiFileText className="text-indigo-500" /> Administrative Name
+                          </label>
+                          <input 
+                             required
+                             type="text" 
+                             value={sessionFormData.name}
+                             onChange={(e) => setSessionFormData({...sessionFormData, name: e.target.value})}
+                             placeholder="e.g. Alumni Meet - Hall B"
+                             className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:font-medium"
+                          />
+                       </div>
+                       <div className="space-y-4">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                             <FiMapPin className="text-indigo-500" /> Physical Venue
+                          </label>
+                          <input 
+                             required
+                             type="text" 
+                             value={sessionFormData.locationName}
+                             onChange={(e) => setSessionFormData({...sessionFormData, locationName: e.target.value})}
+                             placeholder="e.g. Main Auditorium"
+                             className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:font-medium"
+                          />
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="space-y-4">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                             <FiClock className="text-indigo-500" /> Event Scheduling (Human Readable)
+                          </label>
+                          <input 
+                             required
+                             type="text" 
+                             value={sessionFormData.dateTime}
+                             onChange={(e) => setSessionFormData({...sessionFormData, dateTime: e.target.value})}
+                             placeholder="e.g. 10th Aug, 09:30 AM"
+                             className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:font-medium"
+                          />
+                       </div>
+                       <div className="space-y-4">
+                          <div className="flex justify-between items-center mb-1">
+                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <FiActivity className="text-indigo-500" /> Geo-Fence Radius
+                             </label>
+                             <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-4 py-1.5 rounded-full border border-indigo-100 shadow-sm">{sessionFormData.radius} Meters</span>
+                          </div>
+                          <input 
+                             type="range" 
+                             min="20" 
+                             max="1000" 
+                             step="10"
+                             value={sessionFormData.radius}
+                             onChange={(e) => setSessionFormData({...sessionFormData, radius: parseInt(e.target.value)})}
+                             className="w-full h-3 bg-slate-100 rounded-xl appearance-none cursor-pointer accent-indigo-600 transition-all hover:bg-indigo-50"
+                          />
+                          <div className="flex justify-between text-[10px] font-bold text-slate-300 uppercase tracking-tighter px-1">
+                             <span>Precision (20m)</span>
+                             <span>Enterprise (200m)</span>
+                             <span>Broad (1km)</span>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                       <div className="space-y-4 p-6 bg-slate-50/30 rounded-3xl border border-slate-100">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                             <FiMapPin className="text-indigo-500" /> Deployment Lat-Axis
+                          </label>
+                          <input 
+                             required
+                             type="number" 
+                             step="0.000001"
+                             value={sessionFormData.lat}
+                             onChange={(e) => setSessionFormData({...sessionFormData, lat: parseFloat(e.target.value)})}
+                             className="w-full bg-white border border-slate-200 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm"
+                          />
+                       </div>
+                       <div className="space-y-4 p-6 bg-slate-50/30 rounded-3xl border border-slate-100">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                             <FiMapPin className="text-indigo-500" /> Deployment Lng-Axis
+                          </label>
+                          <input 
+                             required
+                             type="number" 
+                             step="0.000001"
+                             value={sessionFormData.lng}
+                             onChange={(e) => setSessionFormData({...sessionFormData, lng: parseFloat(e.target.value)})}
+                             className="w-full bg-white border border-slate-200 rounded-2xl py-4 px-6 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm"
+                          />
+                       </div>
+                    </div>
+
+                    <div className="pt-8 border-t border-slate-100 flex items-center gap-4">
+                       <button 
+                          type="submit" 
+                          disabled={isSaving}
+                          className="px-12 py-4 bg-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50"
+                       >
+                          {isSaving ? (
+                             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          ) : (
+                             <>
+                                <FiSave /> Commit Workspace Changes
+                             </>
+                          )}
+                       </button>
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic group-hover:text-indigo-400 transition-colors">
+                          <FiShield className="inline mr-1" /> All architectural changes are cryptographically secured
+                       </p>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Manual Status Overlay */}
       {editingStudent && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200">
-             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                  <FiShield size={20} />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-sm shadow-2xl animate-in zoom-in-95 border border-slate-100 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 -z-10"></div>
+             
+             <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+                  <FiShield size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800">Update Status</h3>
-                  <p className="text-xs text-slate-400 font-medium">Securely modify verification state</p>
+                  <h3 className="text-xl font-bold text-slate-800">Verify Status</h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Manual Core Override</p>
                 </div>
              </div>
 
-             <div className="flex gap-3 mb-8">
+             <div className="flex gap-4 mb-10">
                 <button 
                   onClick={() => setEditingStatus("present")} 
-                  className={`flex-1 py-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all group ${
-                    editingStatus === 'present' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 hover:border-slate-200 text-slate-400 grayscale'
+                  className={`flex-1 py-5 rounded-[1.5rem] border-2 flex flex-col items-center gap-3 transition-all ${
+                    editingStatus === 'present' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-4 ring-emerald-500/10' : 'border-slate-100 hover:border-slate-200 text-slate-400 grayscale'
                   }`}
                 >
-                  <FiCheckCircle size={22} className={editingStatus === 'present' ? 'animate-bounce' : ''} /> 
-                  <span className="text-[9px] font-bold uppercase tracking-widest">Present</span>
+                  <FiCheckCircle size={28} className={editingStatus === 'present' ? 'animate-bounce' : ''} /> 
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Present</span>
                 </button>
                 <button 
                   onClick={() => setEditingStatus("absent")} 
-                  className={`flex-1 py-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all group ${
-                    editingStatus === 'absent' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-100 hover:border-slate-200 text-slate-400 grayscale'
+                  className={`flex-1 py-5 rounded-[1.5rem] border-2 flex flex-col items-center gap-3 transition-all ${
+                    editingStatus === 'absent' ? 'border-rose-500 bg-rose-50 text-rose-700 ring-4 ring-rose-500/10' : 'border-slate-100 hover:border-slate-200 text-slate-400 grayscale'
                   }`}
                 >
-                  <FiXCircle size={22} className={editingStatus === 'absent' ? 'animate-bounce' : ''} /> 
-                  <span className="text-[9px] font-bold uppercase tracking-widest">Absent</span>
+                  <FiXCircle size={28} className={editingStatus === 'absent' ? 'animate-bounce' : ''} /> 
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Absent</span>
                 </button>
              </div>
 
              <div className="flex gap-3">
-                <button onClick={() => setEditingStudent(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-200 transition-colors">Cancel</button>
-                <button onClick={() => updateAttendance(editingStudent, editingStatus)} className="flex-[2] py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-[0.98]">Confirm Update</button>
+                <button onClick={() => setEditingStudent(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold text-xs hover:bg-slate-200 transition-colors">Cancel</button>
+                <button onClick={() => updateAttendance(editingStudent, editingStatus)} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold text-xs shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-[0.98]">Confirm Override</button>
              </div>
           </div>
         </div>
@@ -643,9 +792,9 @@ const AdminDashboard = () => {
 
       <style jsx>{`
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes zoom-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .animate-in { animation: fade-in 0.2s ease-out; }
-        .zoom-in-95 { animation: zoom-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes zoom-in { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .animate-in { animation: fade-in 0.3s ease-out; }
+        .zoom-in-95 { animation: zoom-in 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
       `}</style>
     </div>
   );
@@ -654,35 +803,36 @@ const AdminDashboard = () => {
 const SidebarLink = ({ icon, label, active = false, onClick }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-xl font-bold text-sm transition-all group ${
-      active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
+    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-sm transition-all group ${
+      active ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'text-slate-500 hover:text-white hover:bg-white/5'
     }`}
   >
-    <span className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'} transition-colors`}>{icon}</span>
+    <span className={`${active ? 'text-white' : 'text-slate-600 group-hover:text-indigo-400'} transition-colors`}>{icon}</span>
     {label}
   </button>
 );
 
 const StatCard = ({ label, value, icon, trend, color }) => (
-  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between group hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 transition-all duration-300">
-    <div className="flex items-start justify-between mb-4">
-      <div className={`w-12 h-12 rounded-2xl ${color} text-white flex items-center justify-center text-xl shadow-lg shadow-current/20 group-hover:rotate-6 transition-transform`}>
+  <div className="bg-white p-7 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between group hover:shadow-2xl hover:shadow-indigo-500/5 hover:-translate-y-1 transition-all duration-500 relative overflow-hidden">
+    <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -mr-10 -mt-10 group-hover:bg-indigo-50 transition-colors"></div>
+    <div className="flex items-start justify-between mb-6 relative">
+      <div className={`w-14 h-14 rounded-2xl ${color} text-white flex items-center justify-center text-2xl shadow-xl shadow-slate-900/5 group-hover:rotate-12 transition-transform`}>
         {icon}
       </div>
-      <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
-        trend === 'Live' ? 'bg-emerald-50 text-emerald-600' : 
-        trend === 'Stable' ? 'bg-blue-50 text-blue-600' : 
-        trend === 'Action Required' ? 'bg-rose-50 text-rose-600' : 
-        'bg-slate-50 text-slate-500'
+      <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl ${
+        trend === 'Live' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
+        trend === 'Stable' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 
+        trend === 'Action Required' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 
+        'bg-slate-50 text-slate-500 border border-slate-100'
       }`}>
         {trend}
       </span>
     </div>
-    <div>
-      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-3xl font-bold text-slate-800 tracking-tight">{value}</p>
+    <div className="relative">
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">{label}</p>
+      <p className="text-4xl font-bold text-slate-800 tracking-tighter">{value}</p>
     </div>
   </div>
 );
 
-export default AdminDashboard;
+export default AdminDashboard;

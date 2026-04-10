@@ -1,716 +1,394 @@
 // HomePage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { axiosInstance } from '../lib/axios';
 import { useAuthStore } from '../store/useAuthStore';
 import toast from "react-hot-toast";
-import 'react-toastify/dist/ReactToastify.css';
+import { 
+  FiCommand, FiActivity, FiMapPin, FiShield, 
+  FiCheckCircle, FiXCircle, FiArrowRight, 
+  FiClock, FiExternalLink, FiLogOut, FiMenu 
+} from "react-icons/fi";
 
 const HomePage = () => {
+  const { sessionId: urlSessionId } = useParams();
+  const navigate = useNavigate();
+  const { authUser, logout } = useAuthStore();
+  
+  const [sessions, setSessions] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [settingsLoading, setSettingsLoading] = useState(true);
-  const [eventSettings, setEventSettings] = useState({
-    lat: 10.654071,
-    lng: 77.035901,
-    radius: 100,
-    isAttendanceEnabled: true
-  });
-  const [locationStatus, setLocationStatus] = useState('pending');
-  const [userLocation, setUserLocation] = useState(null);
-  const [distanceFromVenue, setDistanceFromVenue] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("pending"); // pending, checking, verified, not-verified
+  const [userLocation, setUserLocation] = useState(null);
   const [locationDetails, setLocationDetails] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [distanceFromVenue, setDistanceFromVenue] = useState(null);
   const [gpsInstructions, setGpsInstructions] = useState(false);
 
-  const { authUser } = useAuthStore();
-
-  // Event location coordinates
-  const EVENT_LOCATION = {
-    lat: eventSettings.lat,
-    lng: eventSettings.lng
-  };
-
-  // Premises radius in meters
-  const PREMISES_RADIUS = eventSettings.radius;
-
   // Student information
-  const studentInfo = {
+  const studentInfo = useMemo(() => ({
     name: authUser?.name || 'N/A',
     rollNo: authUser?.rollNo || 'N/A',
     className: authUser?.className || 'N/A'
-  };
+  }), [authUser]);
 
-  // Fetch settings and handle loading
+  // Fetch either all active sessions or one specific session
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchSessionData = async () => {
+      setLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || "https://alumni-meet-2-0.onrender.com/api";
-        const res = await axiosInstance.get("/settings");
-        if (res.data.success) {
-          setEventSettings(res.data.data);
+        if (urlSessionId) {
+          // Direct session access
+          const res = await axiosInstance.get(`/sessions/${urlSessionId}`);
+          if (res.data.success) {
+            setSelectedSession(res.data.data);
+          } else {
+            toast.error("Session not found");
+          }
+        } else {
+          // Gallery view
+          const res = await axiosInstance.get("/sessions/active");
+          if (res.data.success) {
+            setSessions(res.data.data);
+          }
         }
       } catch (err) {
-        console.error("Error fetching settings:", err);
+        console.error("Error fetching sessions:", err);
+        if (urlSessionId) toast.error("Failed to load session details");
       } finally {
-        setSettingsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchSettings();
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchSessionData();
+  }, [urlSessionId]);
 
-  // Calculate distance between two coordinates using Haversine formula
+  // Calculate distance between two coordinates
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000; // Earth's radius in meters
+    const R = 6371000;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
     const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) *
-      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return R * c;
   };
 
-  // Get user's current location with improved error handling
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         reject(new Error("Geolocation not supported on this device"));
         return;
       }
-
-      // Show GPS instructions for first attempt
       setGpsInstructions(true);
-      
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude, accuracy } = position.coords;
-          
           setGpsInstructions(false);
-          setPermissionDenied(false);
-
-          // Check accuracy and provide feedback
-          if (accuracy > 100) {
-            // Still resolve but with warning
-            resolve({
-              lat: latitude,
-              lng: longitude,
-              accuracy,
-              warning: "Low GPS accuracy. For better results, move to an open area."
-            });
-          } else {
-            resolve({
-              lat: latitude,
-              lng: longitude,
-              accuracy
-            });
-          }
+          resolve({ lat: latitude, lng: longitude, accuracy });
         },
         (error) => {
           setGpsInstructions(false);
-          
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              setPermissionDenied(true);
-              reject(new Error("Location access denied. Please enable location in your browser settings."));
-              break;
-            case error.POSITION_UNAVAILABLE:
-              reject(new Error("Location unavailable. Check your GPS signal."));
-              break;
-            case error.TIMEOUT:
-              reject(new Error("Location request timed out. Please try again."));
-              break;
-            default:
-              reject(new Error("Unable to fetch location. Please try again."));
-          }
+          reject(new Error(error.code === 1 ? "Location access denied" : "Unable to fetch location"));
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
       );
     });
   };
 
-  // Verify location and validate
   const verifyLocation = async () => {
-    if (locationStatus === "checking") return;
-
+    if (locationStatus === "checking" || !selectedSession) return;
     setLocationStatus("checking");
     setLocationDetails(null);
-    setPermissionDenied(false);
-    setRetryCount(0);
-
-    const attemptLocation = async (attempt = 0) => {
-      try {
-        const location = await getCurrentLocation();
-
-        const distance = calculateDistance(
-          location.lat,
-          location.lng,
-          EVENT_LOCATION.lat,
-          EVENT_LOCATION.lng
-        );
-
-        setUserLocation(location);
-        setDistanceFromVenue(distance);
-
-        // Show accuracy warning if applicable
-        if (location.warning) {
-          toast.warning(location.warning, {
-            position: "top-center",
-            autoClose: 5000,
-          });
-        }
-
-        if (distance <= PREMISES_RADIUS) {
-          setLocationStatus("verified");
-          setLocationDetails({
-            coordinates: `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
-            distance: `${distance.toFixed(0)} meters`,
-            accuracy: location.accuracy ? `${location.accuracy.toFixed(0)} meters` : 'N/A',
-            withinRadius: "Yes ✓"
-          });
-          toast.success("Location verified! You can now post attendance.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          setLocationStatus("not-verified");
-          setLocationDetails({
-            coordinates: `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
-            distance: `${distance.toFixed(0)} meters`,
-            accuracy: location.accuracy ? `${location.accuracy.toFixed(0)} meters` : 'N/A',
-            withinRadius: "No ✗",
-            errorMessage: `You are ${distance.toFixed(0)}m away from venue. Required: within ${PREMISES_RADIUS}m`
-          });
-          toast.error(`You're too far from the venue (${distance.toFixed(0)}m away)`, {
-            position: "top-center",
-            autoClose: 4000,
-          });
-        }
-
-      } catch (err) {
-        if (attempt < 2) {
-          setRetryCount(attempt + 1);
-          setTimeout(() => attemptLocation(attempt + 1), 3000);
-        } else {
-          setLocationStatus("not-verified");
-          setLocationDetails({
-            errorMessage: err.message
-          });
-          toast.error(err.message, {
-            position: "top-center",
-            autoClose: 5000,
-          });
-        }
-      }
-    };
-
-    attemptLocation();
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (locationStatus !== 'verified') {
-      toast.warning("Please verify your location first", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    if (!userLocation) {
-      toast.error("Location data missing. Please verify again.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
 
     try {
+      const location = await getCurrentLocation();
+      const distance = calculateDistance(location.lat, location.lng, selectedSession.lat, selectedSession.lng);
+      
+      setUserLocation(location);
+      setDistanceFromVenue(distance);
+
+      if (distance <= selectedSession.radius) {
+        setLocationStatus("verified");
+        setLocationDetails({
+          distance: `${distance.toFixed(1)}m`,
+          accuracy: `${location.accuracy.toFixed(1)}m`,
+          status: "Verified ✓"
+        });
+        toast.success("Location verified!");
+      } else {
+        setLocationStatus("not-verified");
+        setLocationDetails({
+          distance: `${distance.toFixed(1)}m`,
+          accuracy: `${location.accuracy.toFixed(1)}m`,
+          status: "Out of Range ✗"
+        });
+        toast.error(`You are ${distance.toFixed(0)}m away (Max: ${selectedSession.radius}m)`);
+      }
+    } catch (err) {
+      setLocationStatus("not-verified");
+      toast.error(err.message);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedSession || locationStatus !== 'verified' || !userLocation || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
       const payload = {
-        studentId: authUser?._id || authUser?.id,
-        event: eventSettings.eventName,
-        userLocation: {
-          lat: userLocation.lat,
-          lng: userLocation.lng,
-          accuracy: userLocation.accuracy
-        },
-        eventLocation: EVENT_LOCATION,
-        radius: PREMISES_RADIUS,
-        distance: distanceFromVenue,
-        studentInfo: {
-          name: studentInfo.name,
-          rollNo: studentInfo.rollNo,
-          className: studentInfo.className
-        },
-        timestamp: new Date().toISOString()
+        sessionId: selectedSession._id,
+        userLocation: { lat: userLocation.lat, lng: userLocation.lng, accuracy: userLocation.accuracy }
       };
 
-      // Cookies are handled automatically by the browser withCredentials
-      
-      
-
-
-      const response = await axiosInstance.post("/auth/attendance", payload);
-      const result = response.data;
-
-      // axios throws on non-2xx responses by default, so we don't need to manually check response.ok
-      // unless we want specific error handling here.
-
-      toast.success("Attendance Posted Successfully!", {
-        position: "top-center",
-        autoClose: 5000,
-        onClose: () => {
-          // Optional: redirect or reset form
-          setLocationStatus('pending');
-          setUserLocation(null);
-          setLocationDetails(null);
-        }
-      });
-
+      await axiosInstance.post("/auth/attendance", payload);
+      toast.success("Attendance Posted Successfully!");
+      setTimeout(() => navigate('/'), 2000);
     } catch (error) {
-      console.error('Submission error:', error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to post attendance";
-      toast.error(errorMessage, {
-        position: "top-center",
-        autoClose: 5000,
-      });
+      toast.error(error.response?.data?.message || "Failed to post attendance");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Open location settings helper
-  const openLocationSettings = () => {
-    if (navigator.userAgent.includes("iPhone") || navigator.userAgent.includes("iPad")) {
-      window.location.href = "app-settings:";
-    } else {
-      toast.info("Please enable location in your browser/device settings", {
-        position: "top-center",
-        autoClose: 5000,
-      });
-    }
-  };
-
-  // Skeleton loader component
-  const SkeletonLoader = () => (
-    <div className="space-y-3 sm:space-y-4 animate-pulse">
-      <div className="skeleton h-7 sm:h-8 w-32 sm:w-36 mx-auto mb-3 sm:mb-4 rounded-full bg-slate-200"></div>
-      <div>
-        <div className="skeleton h-2 sm:h-3 w-16 sm:w-20 mb-1.5 sm:mb-2 rounded-lg bg-slate-200"></div>
-        <div className="skeleton h-10 sm:h-12 w-full rounded-xl bg-slate-200"></div>
+  if (loading) return (
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <div className="w-full max-w-sm flex flex-col items-center gap-6 animate-pulse">
+        <div className="w-16 h-16 bg-slate-100 rounded-2xl"></div>
+        <div className="h-6 bg-slate-100 rounded-full w-48"></div>
+        <div className="w-full space-y-3">
+          <div className="h-32 bg-slate-50 rounded-3xl"></div>
+          <div className="h-32 bg-slate-50 rounded-3xl"></div>
+        </div>
       </div>
-      <div>
-        <div className="skeleton h-2 sm:h-3 w-20 sm:w-24 mb-1.5 sm:mb-2 rounded-lg bg-slate-200"></div>
-        <div className="skeleton h-10 sm:h-12 w-full rounded-xl bg-slate-200"></div>
-      </div>
-      <div>
-        <div className="skeleton h-2 sm:h-3 w-14 sm:w-16 mb-1.5 sm:mb-2 rounded-lg bg-slate-200"></div>
-        <div className="skeleton h-10 sm:h-12 w-full rounded-xl bg-slate-200"></div>
-      </div>
-      <div className="skeleton h-28 sm:h-32 w-full rounded-xl mt-3 sm:mt-4 bg-slate-200"></div>
-      <div className="skeleton h-12 sm:h-14 w-full rounded-xl mt-4 sm:mt-6 bg-slate-200"></div>
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="glass-card w-full max-w-[360px] sm:max-w-md rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 bg-white/80 backdrop-blur-lg shadow-xl">
-          <SkeletonLoader />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <>
-     
+    <div className="min-h-screen bg-[#F1F5F9] font-['Space_Grotesk'] text-[#1E293B]">
       
-      <div className="flex items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="glass-card w-full max-w-[360px] sm:max-w-md rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 bg-white/80 backdrop-blur-lg shadow-xl transition-all duration-300 hover:shadow-2xl">
-          
-          {/* Header */}
-          <div className="text-center mb-4 sm:mb-6">
-            <h1 className="text-[#1e293b] text-xl sm:text-2xl font-bold tracking-tight mb-0.5 sm:mb-1 font-primary">
-              {eventSettings.eventName}
-            </h1>
-            <p className="text-slate-400 text-[10px] sm:text-xs font-medium font-secondary">
-              Attendance Verification
-            </p>
-          </div>
-
-          {!eventSettings.isAttendanceEnabled ? (
-            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6 text-center animate-in fade-in duration-500">
-               <div className="w-16 h-16 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H8m13-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-               </div>
-               <h3 className="text-rose-800 font-bold text-lg mb-2">Attendance Disabled</h3>
-               <p className="text-rose-600 text-sm font-medium leading-relaxed">
-                  The attendance system is currently locked by the administrator. Please try again later.
-               </p>
-               <button 
-                  onClick={() => window.location.reload()}
-                  className="mt-6 px-6 py-2 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors"
-                >
-                  Refresh Status
-                </button>
-            </div>
-          ) : (
-          <form className="space-y-3 sm:space-y-4" onSubmit={handleSubmit}>
-            {/* Student Information */}
-            <div className="space-y-2 sm:space-y-3">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-700 font-primary border-b pb-1.5 sm:pb-2 flex items-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Student Information
-              </h3>
-              <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-slate-600 text-[10px] sm:text-xs font-medium mb-1 sm:mb-1.5 font-secondary">
-                    Name
-                  </label>
-                  <div className="bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-slate-200">
-                    <p className="text-slate-800 text-xs sm:text-sm font-medium font-secondary truncate">
-                      {studentInfo.name}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <div>
-                    <label className="block text-slate-600 text-[10px] sm:text-xs font-medium mb-1 sm:mb-1.5 font-secondary">
-                      Roll No
-                    </label>
-                    <div className="bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-slate-200">
-                      <p className="text-slate-800 text-xs sm:text-sm font-medium font-secondary truncate">
-                        {studentInfo.rollNo}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 text-[10px] sm:text-xs font-medium mb-1 sm:mb-1.5 font-secondary">
-                      Class
-                    </label>
-                    <div className="bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-slate-200">
-                      <p className="text-slate-800 text-xs sm:text-sm font-medium font-secondary truncate">
-                        {studentInfo.className}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      {/* Header (Branding) - Restoration of "Previous" look with enhancement */}
+      <header className="bg-[#0F172A] text-white pt-12 pb-24 px-6 rounded-b-[4rem] relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full -ml-16 -mb-16"></div>
+        
+        <div className="max-w-xl mx-auto flex justify-between items-start relative z-10">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <FiShield size={18} />
               </div>
+              <h1 className="text-xl font-bold tracking-tight">SPECTRUM</h1>
             </div>
+            <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-[0.2em] opacity-80">Smart Attendance System</p>
+          </div>
+          <button 
+            onClick={logout}
+            className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all group"
+          >
+            <FiLogOut className="group-hover:text-indigo-400 transition-colors" />
+          </button>
+        </div>
 
-            {/* Event Information */}
-            <div className="space-y-2 sm:space-y-3">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-700 font-primary border-b pb-1.5 sm:pb-2 flex items-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Event Details
-              </h3>
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-100">
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <div className="bg-blue-100 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
+        <div className="max-w-xl mx-auto mt-10 relative z-10">
+           {urlSessionId && selectedSession ? (
+             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <h2 className="text-3xl font-bold mb-2">{selectedSession.name}</h2>
+               <div className="flex items-center gap-4 text-xs font-medium text-slate-400">
+                 <span className="flex items-center gap-1.5"><FiMapPin className="text-indigo-400" /> {selectedSession.locationName}</span>
+                 <span className="flex items-center gap-1.5"><FiClock className="text-indigo-400" /> {selectedSession.dateTime}</span>
+               </div>
+             </div>
+           ) : (
+             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <h2 className="text-3xl font-bold mb-2">Welcome Back,</h2>
+               <p className="text-slate-400 font-medium">Please select an active verification session to proceed.</p>
+             </div>
+           )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-xl mx-auto px-6 -mt-12 pb-20 space-y-6 relative z-20">
+        
+        {/* Session Card (Student Info) */}
+        {!urlSessionId ? (
+          <div className="space-y-4">
+             <div className="flex items-center justify-between px-2">
+               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Sessions Gallery</h3>
+               <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold text-indigo-600 border border-slate-100 shadow-sm">{sessions.length} Available</span>
+             </div>
+             
+             {sessions.length === 0 ? (
+                <div className="bg-white rounded-[2.5rem] p-12 text-center border border-slate-200 shadow-sm">
+                   <FiActivity size={40} className="mx-auto text-slate-200 mb-4" />
+                   <p className="text-slate-500 font-bold">No active sessions found.</p>
+                   <p className="text-slate-400 text-xs mt-1">Wait for an administrator to initialize an attendance event.</p>
+                   <button onClick={() => window.location.reload()} className="mt-8 px-8 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all">Refresh Feed</button>
+                </div>
+             ) : (
+               sessions.map(s => (
+                 <div 
+                   key={s._id}
+                   onClick={() => navigate(`/session/${s._id}`)}
+                   className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer overflow-hidden relative"
+                 >
+                   <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-full -mr-12 -mt-12 group-hover:bg-indigo-100 transition-colors"></div>
+                    <div className="flex justify-between items-start relative z-10 mb-4">
+                       <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-indigo-600 border border-slate-100 group-hover:bg-white group-hover:shadow-md transition-all">
+                          <FiActivity size={20} />
+                       </div>
+                       <FiArrowRight className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" size={20} />
+                    </div>
+                    <h4 className="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors mb-1">{s.name}</h4>
+                    <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5"><FiMapPin /> {s.locationName}</p>
+                 </div>
+               ))
+             )}
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            
+            {/* Student Info Plate */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
+               <div className="flex items-center gap-5 w-full">
+                  <div className="w-14 h-14 bg-indigo-50 border border-indigo-100 rounded-[1.2rem] flex items-center justify-center font-bold text-indigo-600 text-xl shadow-inner">
+                    {studentInfo.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs sm:text-sm font-semibold text-slate-800 font-primary mb-0.5 sm:mb-1">
-                      {eventSettings.eventName}
-                    </h4>
-                    <div className="space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-slate-600 font-secondary">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                        <span className="truncate">{eventSettings.eventLocationName}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="truncate">{eventSettings.eventDateTime}</span>
-                      </div>
-                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Verified Profile</p>
+                    <h3 className="text-lg font-bold text-slate-800 truncate">{studentInfo.name}</h3>
                   </div>
-                </div>
-              </div>
+               </div>
+               <div className="flex gap-3 w-full md:w-auto">
+                 <div className="flex-1 md:w-28 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">Roll No</p>
+                    <p className="text-sm font-bold text-slate-700">{studentInfo.rollNo}</p>
+                 </div>
+                 <div className="flex-1 md:w-28 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">Class</p>
+                    <p className="text-sm font-bold text-slate-700">{studentInfo.className}</p>
+                 </div>
+               </div>
             </div>
 
-            {/* Location Verification */}
-            <div className="space-y-2 sm:space-y-3">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-700 font-primary border-b pb-1.5 sm:pb-2 flex items-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                </svg>
-                Location Verification
-              </h3>
-              
-              <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-slate-200">
-                
-                {/* GPS Instructions */}
-                {gpsInstructions && (
-                  <div className="mb-3 p-2 sm:p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-[10px] sm:text-xs text-yellow-700 animate-pulse">
-                    <div className="flex items-center gap-1.5">
-                      <svg className="animate-spin h-3 w-3 sm:h-3.5 sm:w-3.5 text-yellow-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span className="font-medium">Getting your location...</span>
-                    </div>
-                    <p className="mt-1 ml-5">For best results, ensure you're in an open area with GPS enabled.</p>
-                  </div>
-                )}
-
-                {/* Permission Denied Message */}
-                {permissionDenied && (
-                  <div className="mb-3 p-2 sm:p-3 bg-red-50 rounded-lg border border-red-200 text-[10px] sm:text-xs">
-                    <div className="flex items-start gap-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      <div>
-                        <p className="font-medium text-red-700">Location access denied</p>
-                        <p className="text-red-600 mt-0.5">Please enable location in your browser/device settings</p>
-                        <button
-                          type="button"
-                          onClick={openLocationSettings}
-                          className="mt-2 text-red-700 font-medium underline"
-                        >
-                          How to enable
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Location Status Display */}
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${
-                      locationStatus === 'verified' ? 'bg-green-100' :
-                      locationStatus === 'not-verified' ? 'bg-red-100' :
-                      locationStatus === 'checking' ? 'bg-yellow-100' : 'bg-slate-100'
-                    }`}>
-                      {locationStatus === 'verified' ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      ) : locationStatus === 'not-verified' ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      ) : locationStatus === 'checking' ? (
-                        <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs sm:text-sm font-semibold text-slate-800 font-primary">
-                        Location Status
-                      </h4>
-                      <p className={`text-[10px] sm:text-xs font-secondary truncate ${
-                        locationStatus === 'verified' ? 'text-green-600' :
-                        locationStatus === 'not-verified' ? 'text-red-600' :
-                        locationStatus === 'checking' ? 'text-yellow-600' : 'text-slate-500'
-                      }`}>
-                        {locationStatus === 'verified' ? 'Within event premises' :
-                         locationStatus === 'not-verified' ? (locationDetails?.errorMessage || 'Tap to verify') :
-                         locationStatus === 'checking' ? 'Verifying location...' :
-                         'Tap to verify your location'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Status Badge */}
-                  <div className={`text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg flex-shrink-0 ${
-                    locationStatus === 'verified' ? 'bg-green-100 text-green-700' :
-                    locationStatus === 'not-verified' ? 'bg-red-100 text-red-700' :
-                    locationStatus === 'checking' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700'
-                  }`}>
-                    {locationStatus === 'verified' ? 'Verified' :
-                     locationStatus === 'not-verified' ? 'Not Verified' :
-                     locationStatus === 'checking' ? 'Checking...' : 'Pending'}
-                  </div>
-                </div>
-
-                {/* Premises Condition */}
-                <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <div className="flex items-start gap-1.5 sm:gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+            {/* Attendance Form */}
+            <form onSubmit={handleSubmit} className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-xl space-y-8 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 -z-0"></div>
+               
+               <div className="relative z-10">
+                 <div className="flex items-center justify-between mb-8">
                     <div>
-                      <p className="text-[10px] sm:text-xs text-blue-700 font-secondary">
-                        <span className="font-semibold">Required:</span> Within {PREMISES_RADIUS}m of venue
-                      </p>
-                      <div className="text-[8px] sm:text-[10px] text-blue-600 font-mono bg-blue-100 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded inline-block mt-1">
-                        {EVENT_LOCATION.lat.toFixed(4)}, {EVENT_LOCATION.lng.toFixed(4)}
-                      </div>
+                       <h3 className="text-xl font-bold text-slate-800">Post Attendance</h3>
+                       <p className="text-xs text-slate-500 font-medium">Geo-fence verification required</p>
                     </div>
-                  </div>
-                </div>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+                      locationStatus === 'verified' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
+                      locationStatus === 'not-verified' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 
+                      'bg-slate-50 text-slate-400 border border-slate-100 shadow-inner'
+                    }`}>
+                      {locationStatus === 'verified' ? <FiCheckCircle size={24} /> : locationStatus === 'not-verified' ? <FiXCircle size={24} /> : <FiMapPin size={24} />}
+                    </div>
+                 </div>
 
-                {/* Retry Counter */}
-                {retryCount > 0 && (
-                  <div className="mb-2 text-[10px] sm:text-xs text-center text-slate-500">
-                    Retrying... Attempt {retryCount}/3
-                  </div>
-                )}
-
-                {/* Verification Button */}
-                <button
-                  type="button"
-                  onClick={verifyLocation}
-                  disabled={locationStatus === 'checking'}
-                  className={`w-full py-2.5 sm:py-3 text-white font-semibold rounded-lg sm:rounded-xl transition-all text-xs sm:text-sm font-primary flex items-center justify-center gap-1.5 sm:gap-2 ${
-                    locationStatus === 'verified'
-                      ? 'bg-green-500 hover:bg-green-600'
-                      : locationStatus === 'not-verified'
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'
-                  } ${locationStatus === 'checking' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {locationStatus === 'checking' ? (
-                    <>
-                      <svg className="animate-spin h-3.5 w-3.5 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Checking...
-                    </>
-                  ) : locationStatus === 'verified' ? (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Verified 
-                    </>
-                  ) : locationStatus === 'not-verified' ? (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Try Again
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      </svg>
-                      Verify My Location
-                    </>
-                  )}
-                </button>
-
-                {/* Location Details */}
-                {locationDetails && (
-                  <div className="mt-3 space-y-1.5 sm:space-y-2">
-                    {locationDetails.coordinates && (
-                      <div className="flex items-center justify-between text-[10px] sm:text-xs">
-                        <span className="text-slate-600 font-secondary">Coordinates:</span>
-                        <span className="font-medium text-slate-800 font-primary truncate ml-2">
-                          {locationDetails.coordinates}
-                        </span>
+                 <div className={`p-6 rounded-[2rem] border transition-all mb-8 ${
+                   locationStatus === 'verified' ? 'bg-emerald-50/30 border-emerald-100' : 
+                   locationStatus === 'not-verified' ? 'bg-rose-50/30 border-rose-100' : 'bg-slate-50/50 border-slate-200'
+                 }`}>
+                    {locationDetails ? (
+                       <div className="space-y-3 animate-in fade-in duration-300">
+                          <div className="flex justify-between items-center text-xs">
+                             <span className="text-slate-500 font-bold uppercase tracking-tighter">Current Distance</span>
+                             <span className={`font-bold ${locationStatus === 'verified' ? 'text-emerald-600' : 'text-rose-600'}`}>{locationDetails.distance}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                             <span className="text-slate-500 font-bold uppercase tracking-tighter">GPS Precision</span>
+                             <span className="font-bold text-slate-700">{locationDetails.accuracy}</span>
+                          </div>
+                          <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                             <span className="text-slate-500 font-bold uppercase tracking-tighter">Verification State</span>
+                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                               locationStatus === 'verified' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                             }`}>{locationDetails.status}</span>
+                          </div>
+                       </div>
+                    ) : (
+                      <div className="text-center py-4">
+                         <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                            Stand within the <b>{selectedSession?.radius}m</b> perimeter of the venue to unlock the attendance vault.
+                         </p>
                       </div>
                     )}
-                    {locationDetails.accuracy && (
-                      <div className="flex items-center justify-between text-[10px] sm:text-xs">
-                        <span className="text-slate-600 font-secondary">Accuracy:</span>
-                        <span className="font-medium text-slate-800 font-primary">
-                          {locationDetails.accuracy}
-                        </span>
-                      </div>
-                    )}
-                    {locationDetails.distance && (
-                      <div className="flex items-center justify-between text-[10px] sm:text-xs">
-                        <span className="text-slate-600 font-secondary">Distance:</span>
-                        <span className="font-medium text-slate-800 font-primary">
-                          {locationDetails.distance}
-                        </span>
-                      </div>
-                    )}
-                    {locationDetails.withinRadius && (
-                      <div className="flex items-center justify-between text-[10px] sm:text-xs">
-                        <span className="text-slate-600 font-secondary">Within radius:</span>
-                        <span className={`font-medium font-primary ${
-                          locationDetails.withinRadius === 'Yes ✓' ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {locationDetails.withinRadius}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+                 </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={locationStatus !== 'verified' || isSubmitting}
-              className={`w-full py-3 sm:py-3.5 mt-1 sm:mt-2 font-bold rounded-lg sm:rounded-xl transition-all text-sm sm:text-base font-primary ${
-                locationStatus === 'verified'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-md shadow-blue-200'
-                  : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-              } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                 {gpsInstructions && (
+                   <div className="mb-6 bg-amber-50 rounded-2xl p-4 border border-amber-100 flex items-center gap-3 animate-pulse">
+                      <FiActivity className="text-amber-500" />
+                      <div>
+                        <p className="text-[11px] font-bold text-amber-800">Activating GPS Network...</p>
+                        <p className="text-[9px] text-amber-600">Please remain outdoors for faster satellite acquisition.</p>
+                      </div>
+                   </div>
+                 )}
+
+                 <div className="space-y-4">
+                    <button 
+                      type="button"
+                      onClick={verifyLocation}
+                      disabled={locationStatus === 'checking'}
+                      className={`w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        locationStatus === 'verified' ? 'bg-white border-2 border-emerald-500 text-emerald-600' : 
+                        locationStatus === 'not-verified' ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-200' : 
+                        'bg-slate-900 text-white hover:bg-black shadow-lg shadow-slate-900/10'
+                      }`}
+                    >
+                      {locationStatus === 'checking' ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : 
+                       locationStatus === 'verified' ? <><FiCheckCircle /> Verification Locked</> : 
+                       locationStatus === 'not-verified' ? <><FiXCircle /> Retry Positioning</> : <><FiMapPin /> Verify My Presence</>}
+                    </button>
+
+                    <button 
+                      type="submit"
+                      disabled={locationStatus !== 'verified' || isSubmitting}
+                      className={`w-full py-5 rounded-2xl font-bold text-base transition-all shadow-2xl active:scale-95 ${
+                        locationStatus === 'verified' ? 'bg-indigo-600 text-white shadow-indigo-600/30 hover:bg-indigo-700' : 
+                        'bg-slate-100 text-slate-400 grayscale cursor-not-allowed shadow-none'
+                      }`}
+                    >
+                      {isSubmitting ? 'Authenticating...' : 'Confirm Attendance'}
+                    </button>
+                 </div>
+               </div>
+            </form>
+            
+            <button 
+              onClick={() => navigate('/')}
+              className="w-full py-4 bg-transparent border border-slate-300 rounded-[1.5rem] text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
             >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-white mx-auto inline mr-1.5 sm:mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Posting...
-                </>
-              ) : locationStatus === 'verified' ? (
-                'Post Attendance'
-              ) : (
-                'Verify Location First'
-              )}
+              <FiArrowRight className="rotate-180" /> Back to Session Discovery
             </button>
-          </form>
-          )}
 
-          {/* Information Footer */}
-          <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-500 font-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Location verification is mandatory for attendance posting</span>
-            </div>
           </div>
+        )}
+
+        {/* Informational Footer */}
+        <div className="max-w-xl mx-auto flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest pt-8">
+           <FiShield className="text-slate-300" />
+           <span>End-to-End Cryptographic Attendance</span>
         </div>
-      </div>
-    </>
+
+      </main>
+
+      <style jsx>{`
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slide-in-bottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-in { animation: fade-in 0.3s ease-out; }
+        .slide-in-from-bottom-4 { animation: slide-in-bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .slide-in-from-bottom-6 { animation: slide-in-bottom 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+      `}</style>
+    </div>
   );
 };
 

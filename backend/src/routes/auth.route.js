@@ -4,6 +4,8 @@ import protectRoute from "../middlewares/auth.middleware.js"
 import { checkAuth } from '../controllers/auth.controller.js';
 import User from '../models/user.model.js';
 import Settings from '../models/settings.model.js';
+import Session from '../models/session.model.js';
+import Attendance from '../models/attendance.model.js';
 
 const router = express.Router();
 
@@ -53,13 +55,56 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 router.post("/attendance", protectRoute, async (req, res) => {
     try {
-        const { userLocation } = req.body;
+        const { userLocation, sessionId } = req.body;
         const studentId = req.user._id;
 
         if (!userLocation || userLocation.lat === undefined || userLocation.lng === undefined) {
             return res.status(400).json({ success: false, message: "User location data is missing" });
         }
 
+        // Logic for specific session if sessionId is provided
+        if (sessionId) {
+            const session = await Session.findById(sessionId);
+            if (!session) return res.status(404).json({ success: false, message: "Session not found" });
+            
+            if (!session.isAttendanceEnabled) {
+                return res.status(403).json({ success: false, message: "Attendance for this session is disabled" });
+            }
+
+            const distance = calculateDistance(userLocation.lat, userLocation.lng, session.lat, session.lng);
+            if (distance > session.radius) {
+                return res.status(403).json({ success: false, message: "Outside session premises", distance: Math.round(distance) });
+            }
+
+            // Check if already attended this specific session
+            const existingAttendance = await Attendance.findOne({ userId: studentId, sessionId: sessionId });
+            if (existingAttendance) {
+                return res.status(409).json({ success: false, message: "Attendance already marked for this session" });
+            }
+
+            // Create new attendance record
+            const attendance = new Attendance({
+                userId: studentId,
+                sessionId: sessionId,
+                userLocation: {
+                    lat: userLocation.lat,
+                    lng: userLocation.lng,
+                    accuracy: userLocation.accuracy
+                },
+                distance: Math.round(distance)
+            });
+            await attendance.save();
+
+            // Also update legacy fields on user for compatibility
+            await User.findByIdAndUpdate(studentId, {
+                hasAttended: true,
+                attendedAt: new Date()
+            });
+
+            return res.status(201).json({ success: true, message: "Attendance saved successfully", distance: Math.round(distance) });
+        }
+
+        // Fallback to legacy single-event settings if no sessionId is provided
         let settings = await Settings.findOne() || await Settings.create({});
         if (!settings.isAttendanceEnabled) {
             return res.status(403).json({ success: false, message: "Attendance system is disabled" });
@@ -80,7 +125,8 @@ router.post("/attendance", protectRoute, async (req, res) => {
 
         return res.status(201).json({ success: true, message: "Attendance saved successfully", distance: Math.round(distance) });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Server error" });
+        console.error("Attendance error:", error);
+        res.status(500).json({ success: false, message: error.message || "Server error" });
     }
 });
 
