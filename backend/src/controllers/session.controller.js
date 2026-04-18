@@ -43,10 +43,27 @@ export const deleteSession = async (req, res) => {
 
 export const getActiveSessions = async (req, res) => {
   try {
-    const sessions = await Session.find({ isAttendanceEnabled: true }).sort({ createdAt: -1 });
+    const userYear = req.user?.year;
+    const userDept = req.user?.department;
+
+    let sessions = await Session.find({ isAttendanceEnabled: true }).sort({ createdAt: -1 });
+
+    // Filter sessions based on eligibility
+    sessions = sessions.filter(session => {
+      try {
+        const yearMatch = !session.eligibleYears || session.eligibleYears.length === 0 || session.eligibleYears.includes(userYear);
+        const deptMatch = !session.eligibleDepartments || session.eligibleDepartments.length === 0 || session.eligibleDepartments.includes(userDept);
+        return yearMatch && deptMatch;
+      } catch (e) {
+        console.error("Filter Error for session:", session._id, e.message);
+        return false;
+      }
+    });
+
     res.status(200).json({ success: true, data: sessions });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("getActiveSessions Error:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -82,5 +99,18 @@ export const updateManualAttendance = async (req, res) => {
     res.status(200).json({ success: true, message: "Attendance updated manually" });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+export const getSessionById = async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      console.log("Session not found for ID:", req.params.id);
+      return res.status(404).json({ success: false, message: "Session not found" });
+    }
+    res.status(200).json({ success: true, data: session });
+  } catch (error) {
+    console.error("GetSessionById Error:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, logout, adminLogin } from '../controllers/auth.controller.js';
+import { login, logout, signup, adminLogin, getUsers, getDistinctAttributes, getAttendance } from '../controllers/auth.controller.js';
 import protectRoute from "../middlewares/auth.middleware.js"
 import { checkAuth } from '../controllers/auth.controller.js';
 import User from '../models/user.model.js';
@@ -11,21 +11,16 @@ const router = express.Router();
 
 
 router.post("/login", login)
+router.post("/signup", signup)
 router.post("/admin/login", adminLogin)
 router.post("/logout", logout)
 
 
 
 router.get("/check", protectRoute, checkAuth);
-router.get("/users", protectRoute, async (req, res) => {
-    // Optional: add admin check here if needed
-    try {
-        const users = await User.find().select("-password");
-        res.status(200).json({ success: true, data: users });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Failed to fetch users" });
-    }
-});
+router.get("/users", protectRoute, getUsers); // Admin only
+router.get("/attributes", protectRoute, getDistinctAttributes); // For filtering options
+router.get("/attendance", protectRoute, getAttendance); // For student history
 
 router.patch("/users/:id/attendance", protectRoute, async (req, res) => {
     try {

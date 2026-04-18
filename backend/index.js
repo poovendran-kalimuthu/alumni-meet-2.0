@@ -13,6 +13,7 @@ app.use(
     cors({
         origin: [
             "https://alumni-meet-2-0.vercel.app",
+            "https://alumni-meet-2-0.vercel.app/",
             "http://localhost:5173"
         ],
         credentials: true,

@@ -66,7 +66,7 @@ export const useAuthStore = create((set) => ({
 
     fetchAttendance: async () => {
         try {
-            const res = await axiosInstance.get("/auth/attendance");  // ✅ GET
+            const res = await axiosInstance.get("/auth/attendance"); 
             return res.data;   
         } catch (error) {
             throw error;

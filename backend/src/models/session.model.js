@@ -33,6 +33,14 @@ const sessionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    eligibleYears: {
+      type: [String],
+      default: [], // Empty means all years
+    },
+    eligibleDepartments: {
+      type: [String],
+      default: [], // Empty means all departments
+    },
     locationPresets: [
       {
         name: { type: String, required: true },

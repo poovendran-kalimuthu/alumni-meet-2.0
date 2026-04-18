@@ -167,7 +167,7 @@ const HomePage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] font-['Space_Grotesk'] text-[#1E293B]">
+    <div className="min-h-screen bg-[#F1F5F9] font-secondary text-[#1E293B]">
       
       {/* Header (Branding) - Restoration of "Previous" look with enhancement */}
       <header className="bg-[#0F172A] text-white pt-12 pb-24 px-6 rounded-b-[4rem] relative overflow-hidden shadow-2xl">
@@ -180,7 +180,7 @@ const HomePage = () => {
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <FiShield size={18} />
               </div>
-              <h1 className="text-xl font-bold tracking-tight">SPECTRUM</h1>
+              <h1 className="text-xl font-primary font-bold tracking-tight">SPECTRUM</h1>
             </div>
             <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-[0.2em] opacity-80">Smart Attendance System</p>
           </div>
@@ -195,7 +195,7 @@ const HomePage = () => {
         <div className="max-w-xl mx-auto mt-10 relative z-10">
            {urlSessionId && selectedSession ? (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h2 className="text-3xl font-bold mb-2">{selectedSession.name}</h2>
+               <h2 className="text-3xl font-primary font-bold mb-2">{selectedSession.name}</h2>
                <div className="flex items-center gap-4 text-xs font-medium text-slate-400">
                  <span className="flex items-center gap-1.5"><FiMapPin className="text-indigo-400" /> {selectedSession.locationName}</span>
                  <span className="flex items-center gap-1.5"><FiClock className="text-indigo-400" /> {selectedSession.dateTime}</span>
@@ -203,7 +203,7 @@ const HomePage = () => {
              </div>
            ) : (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h2 className="text-3xl font-bold mb-2">Welcome Back,</h2>
+               <h2 className="text-3xl font-primary font-bold mb-2">Welcome Back,</h2>
                <p className="text-slate-400 font-medium">Please select an active verification session to proceed.</p>
              </div>
            )}
@@ -217,16 +217,16 @@ const HomePage = () => {
         {!urlSessionId ? (
           <div className="space-y-4">
              <div className="flex items-center justify-between px-2">
-               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Sessions Gallery</h3>
-               <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold text-indigo-600 border border-slate-100 shadow-sm">{sessions.length} Available</span>
+               <h3 className="text-xs font-primary font-bold text-slate-500 uppercase tracking-widest">Active Sessions Gallery</h3>
+               <span className="px-3 py-1 bg-white rounded-full text-[10px] font-primary font-bold text-indigo-600 border border-slate-100 shadow-sm">{sessions.length} Available</span>
              </div>
              
              {sessions.length === 0 ? (
                 <div className="bg-white rounded-[2.5rem] p-12 text-center border border-slate-200 shadow-sm">
                    <FiActivity size={40} className="mx-auto text-slate-200 mb-4" />
-                   <p className="text-slate-500 font-bold">No active sessions found.</p>
+                   <p className="text-slate-500 font-primary font-bold">No active sessions found.</p>
                    <p className="text-slate-400 text-xs mt-1">Wait for an administrator to initialize an attendance event.</p>
-                   <button onClick={() => window.location.reload()} className="mt-8 px-8 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all">Refresh Feed</button>
+                   <button onClick={() => window.location.reload()} className="mt-8 px-8 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-primary font-bold hover:bg-black transition-all">Refresh Feed</button>
                 </div>
              ) : (
                sessions.map(s => (
@@ -242,7 +242,7 @@ const HomePage = () => {
                        </div>
                        <FiArrowRight className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" size={20} />
                     </div>
-                    <h4 className="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors mb-1">{s.name}</h4>
+                    <h4 className="text-xl font-primary font-bold text-slate-800 group-hover:text-indigo-600 transition-colors mb-1">{s.name}</h4>
                     <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5"><FiMapPin /> {s.locationName}</p>
                  </div>
                ))
@@ -254,22 +254,22 @@ const HomePage = () => {
             {/* Student Info Plate */}
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
                <div className="flex items-center gap-5 w-full">
-                  <div className="w-14 h-14 bg-indigo-50 border border-indigo-100 rounded-[1.2rem] flex items-center justify-center font-bold text-indigo-600 text-xl shadow-inner">
+                  <div className="w-14 h-14 bg-indigo-50 border border-indigo-100 rounded-[1.2rem] flex items-center justify-center font-primary font-bold text-indigo-600 text-xl shadow-inner">
                     {studentInfo.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Verified Profile</p>
-                    <h3 className="text-lg font-bold text-slate-800 truncate">{studentInfo.name}</h3>
+                    <p className="text-[10px] text-slate-400 font-primary font-bold uppercase tracking-widest mb-0.5">Verified Profile</p>
+                    <h3 className="text-lg font-primary font-bold text-slate-800 truncate">{studentInfo.name}</h3>
                   </div>
                </div>
                <div className="flex gap-3 w-full md:w-auto">
                  <div className="flex-1 md:w-28 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                    <p className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">Roll No</p>
-                    <p className="text-sm font-bold text-slate-700">{studentInfo.rollNo}</p>
+                    <p className="text-[9px] text-slate-400 font-primary font-bold uppercase mb-0.5">Roll No</p>
+                    <p className="text-sm font-primary font-bold text-slate-700">{studentInfo.rollNo}</p>
                  </div>
                  <div className="flex-1 md:w-28 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                    <p className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">Class</p>
-                    <p className="text-sm font-bold text-slate-700">{studentInfo.className}</p>
+                    <p className="text-[9px] text-slate-400 font-primary font-bold uppercase mb-0.5">Class</p>
+                    <p className="text-sm font-primary font-bold text-slate-700">{studentInfo.className}</p>
                  </div>
                </div>
             </div>
@@ -281,7 +281,7 @@ const HomePage = () => {
                <div className="relative z-10">
                  <div className="flex items-center justify-between mb-8">
                     <div>
-                       <h3 className="text-xl font-bold text-slate-800">Post Attendance</h3>
+                       <h3 className="text-xl font-primary font-bold text-slate-800">Post Attendance</h3>
                        <p className="text-xs text-slate-500 font-medium">Geo-fence verification required</p>
                     </div>
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
@@ -300,15 +300,15 @@ const HomePage = () => {
                     {locationDetails ? (
                        <div className="space-y-3 animate-in fade-in duration-300">
                           <div className="flex justify-between items-center text-xs">
-                             <span className="text-slate-500 font-bold uppercase tracking-tighter">Current Distance</span>
-                             <span className={`font-bold ${locationStatus === 'verified' ? 'text-emerald-600' : 'text-rose-600'}`}>{locationDetails.distance}</span>
+                             <span className="text-slate-500 font-primary font-bold uppercase tracking-tighter">Current Distance</span>
+                             <span className={`font-primary font-bold ${locationStatus === 'verified' ? 'text-emerald-600' : 'text-rose-600'}`}>{locationDetails.distance}</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
-                             <span className="text-slate-500 font-bold uppercase tracking-tighter">GPS Precision</span>
-                             <span className="font-bold text-slate-700">{locationDetails.accuracy}</span>
+                             <span className="text-slate-500 font-primary font-bold uppercase tracking-tighter">GPS Precision</span>
+                             <span className="font-primary font-bold text-slate-700">{locationDetails.accuracy}</span>
                           </div>
                           <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between items-center text-xs">
-                             <span className="text-slate-500 font-bold uppercase tracking-tighter">Verification State</span>
+                             <span className="text-slate-500 font-primary font-bold uppercase tracking-tighter">Verification State</span>
                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                locationStatus === 'verified' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
                              }`}>{locationDetails.status}</span>
@@ -327,7 +327,7 @@ const HomePage = () => {
                    <div className="mb-6 bg-amber-50 rounded-2xl p-4 border border-amber-100 flex items-center gap-3 animate-pulse">
                       <FiActivity className="text-amber-500" />
                       <div>
-                        <p className="text-[11px] font-bold text-amber-800">Activating GPS Network...</p>
+                        <p className="text-[11px] font-primary font-bold text-amber-800">Activating GPS Network...</p>
                         <p className="text-[9px] text-amber-600">Please remain outdoors for faster satellite acquisition.</p>
                       </div>
                    </div>
@@ -338,7 +338,7 @@ const HomePage = () => {
                       type="button"
                       onClick={verifyLocation}
                       disabled={locationStatus === 'checking'}
-                      className={`w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full py-4 rounded-2xl font-primary font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                         locationStatus === 'verified' ? 'bg-white border-2 border-emerald-500 text-emerald-600' : 
                         locationStatus === 'not-verified' ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-200' : 
                         'bg-slate-900 text-white hover:bg-black shadow-lg shadow-slate-900/10'
@@ -352,7 +352,7 @@ const HomePage = () => {
                     <button 
                       type="submit"
                       disabled={locationStatus !== 'verified' || isSubmitting}
-                      className={`w-full py-5 rounded-2xl font-bold text-base transition-all shadow-2xl active:scale-95 ${
+                      className={`w-full py-5 rounded-2xl font-primary font-bold text-base transition-all shadow-2xl active:scale-95 ${
                         locationStatus === 'verified' ? 'bg-indigo-600 text-white shadow-indigo-600/30 hover:bg-indigo-700' : 
                         'bg-slate-100 text-slate-400 grayscale cursor-not-allowed shadow-none'
                       }`}
@@ -365,7 +365,7 @@ const HomePage = () => {
             
             <button 
               onClick={() => navigate('/')}
-              className="w-full py-4 bg-transparent border border-slate-300 rounded-[1.5rem] text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 bg-transparent border border-slate-300 rounded-[1.5rem] text-xs font-primary font-bold text-slate-500 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
             >
               <FiArrowRight className="rotate-180" /> Back to Session Discovery
             </button>
@@ -381,7 +381,7 @@ const HomePage = () => {
 
       </main>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slide-in-bottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-in { animation: fade-in 0.3s ease-out; }

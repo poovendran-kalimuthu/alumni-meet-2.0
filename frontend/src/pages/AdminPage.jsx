@@ -59,7 +59,7 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-950 relative overflow-hidden font-['Space_Grotesk']">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-950 relative overflow-hidden font-secondary">
       {/* Dynamic Background Elements */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/10 blur-[120px] animate-pulse" />
@@ -94,7 +94,7 @@ const AdminLogin = () => {
           <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(79,70,229,0.3)] mb-6 transform hover:scale-105 transition-transform">
             <FiShield className="text-white text-2xl" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-primary font-bold text-white tracking-tight">
             SPECTRUM<span className="text-indigo-500">ADMIN</span>
           </h1>
           <div className="h-px w-12 bg-zinc-800 my-4" />
@@ -107,7 +107,7 @@ const AdminLogin = () => {
           
           <div className="relative z-10">
             <div className="mb-10">
-              <h2 className="text-xl font-bold text-white mb-1">Administrative Login</h2>
+              <h2 className="text-xl font-primary font-bold text-white mb-1">Administrative Login</h2>
               <p className="text-zinc-500 text-xs">Enter your secure credentials to proceed</p>
             </div>
 
