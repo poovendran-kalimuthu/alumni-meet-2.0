@@ -14,6 +14,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import toast from "react-hot-toast";
+import * as XLSX from 'xlsx';
 
 const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
@@ -154,25 +155,69 @@ const AdminDashboard = () => {
   };
 
   const parseBulkText = (text) => {
-    return text.split("\n")
-      .map(line => line.trim()).filter(Boolean)
-      .map(line => {
-        const parts = line.split(",").map(p => p.trim());
-        return { rollNo: parts[0] || "", name: parts.slice(1).join(",").trim() || "" };
-      })
-      .filter(r => r.rollNo || r.name);
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length > 0) {
+      const firstLine = lines[0].toLowerCase();
+      // If the first line looks like a header (contains "roll" or "name"), skip it
+      if (firstLine.includes("roll") || firstLine.includes("name")) {
+        lines.shift();
+      }
+    }
+    return lines.map(line => {
+      const parts = line.split(",").map(p => p.trim());
+      return { rollNo: parts[0] || "", name: parts.slice(1).join(",").trim() || "" };
+    }).filter(r => r.rollNo || r.name);
   };
 
   const handleBulkFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
+    const isExcel = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+
     reader.onload = (ev) => {
-      const text = ev.target.result;
-      setBulkRawText(text);
-      setBulkPreview(parseBulkText(text));
+      if (isExcel) {
+        try {
+          const data = new Uint8Array(ev.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          
+          const parsed = jsonData
+            .filter(row => row.length > 0)
+            .map(row => ({
+              rollNo: row[0]?.toString().trim() || "",
+              name: row[1]?.toString().trim() || ""
+            }))
+            .filter(u => u.rollNo || u.name);
+
+          if (parsed.length > 0) {
+            const first = parsed[0];
+            if (first.rollNo.toLowerCase().includes("roll") || first.name.toLowerCase().includes("name")) {
+              parsed.shift();
+            }
+          }
+
+          setBulkPreview(parsed);
+          setBulkRawText(parsed.map(u => `${u.rollNo}, ${u.name}`).join("\n"));
+          toast.success(`Parsed ${parsed.length} records from Excel`);
+        } catch (err) {
+          toast.error("Error parsing Excel file");
+          console.error(err);
+        }
+      } else {
+        const text = ev.target.result;
+        setBulkRawText(text);
+        setBulkPreview(parseBulkText(text));
+      }
     };
-    reader.readAsText(file);
+
+    if (isExcel) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   const handleBulkSubmit = async (e) => {
@@ -1339,11 +1384,11 @@ const AdminDashboard = () => {
 
                   {/* Step 2: CSV Input */}
                   <div>
-                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em] mb-4">Step 2 â€” Upload or Paste CSV <span className="text-slate-400 normal-case tracking-normal font-medium">(format: RollNo, Name)</span></p>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em] mb-4">Step 2 â€” Upload Excel Sheet or Paste Data <span className="text-slate-400 normal-case tracking-normal font-medium">(Columns: Roll No, Name)</span></p>
                     <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all group">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 group-hover:text-indigo-400 mb-2 transition-colors"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                      <p className="text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">Click to upload CSV file</p>
-                      <input type="file" accept=".csv,.txt" className="hidden" onChange={handleBulkFileUpload} />
+                      <p className="text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">Click to upload Excel (.xlsx, .xls)</p>
+                      <input type="file" accept=".xlsx,.xls,.csv,.txt" className="hidden" onChange={handleBulkFileUpload} />
                     </label>
                     <div className="relative mt-4">
                       <p className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-4">â€” or paste below â€”</p>
