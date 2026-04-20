@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, logout, signup, adminLogin, getUsers, getDistinctAttributes, getAttendance } from '../controllers/auth.controller.js';
+import { login, logout, signup, adminLogin, getUsers, getDistinctAttributes, getAttendance, createUser } from '../controllers/auth.controller.js';
 import protectRoute from "../middlewares/auth.middleware.js"
 import { checkAuth } from '../controllers/auth.controller.js';
 import User from '../models/user.model.js';
@@ -19,6 +19,7 @@ router.post("/logout", logout)
 
 router.get("/check", protectRoute, checkAuth);
 router.get("/users", protectRoute, getUsers); // Admin only
+router.post("/users", protectRoute, createUser); // Admin only
 router.get("/attributes", protectRoute, getDistinctAttributes); // For filtering options
 router.get("/attendance", protectRoute, getAttendance); // For student history
 

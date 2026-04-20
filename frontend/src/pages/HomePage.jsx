@@ -170,17 +170,17 @@ const HomePage = () => {
     <div className="min-h-screen bg-[#F1F5F9] font-secondary text-[#1E293B]">
       
       {/* Header (Branding) - Restoration of "Previous" look with enhancement */}
-      <header className="bg-[#0F172A] text-white pt-12 pb-24 px-6 rounded-b-[4rem] relative overflow-hidden shadow-2xl">
+      <header className="bg-[#0F172A] text-white pt-10 pb-20 px-4 sm:px-6 rounded-b-[3rem] sm:rounded-b-[4rem] relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full -ml-16 -mb-16"></div>
         
-        <div className="max-w-xl mx-auto flex justify-between items-start relative z-10">
+        <div className="max-w-xl mx-auto flex justify-between items-center relative z-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <FiShield size={18} />
               </div>
-              <h1 className="text-xl font-primary font-bold tracking-tight">SPECTRUM</h1>
+              <h1 className="text-base sm:text-xl font-primary font-bold tracking-tight">SPECTRUM</h1>
             </div>
             <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-[0.2em] opacity-80">Smart Attendance System</p>
           </div>
@@ -195,7 +195,7 @@ const HomePage = () => {
         <div className="max-w-xl mx-auto mt-10 relative z-10">
            {urlSessionId && selectedSession ? (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h2 className="text-3xl font-primary font-bold mb-2">{selectedSession.name}</h2>
+               <h2 className="text-2xl sm:text-3xl font-primary font-bold mb-2">{selectedSession.name}</h2>
                <div className="flex items-center gap-4 text-xs font-medium text-slate-400">
                  <span className="flex items-center gap-1.5"><FiMapPin className="text-indigo-400" /> {selectedSession.locationName}</span>
                  <span className="flex items-center gap-1.5"><FiClock className="text-indigo-400" /> {selectedSession.dateTime}</span>
@@ -203,7 +203,7 @@ const HomePage = () => {
              </div>
            ) : (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h2 className="text-3xl font-primary font-bold mb-2">Welcome Back,</h2>
+               <h2 className="text-2xl sm:text-3xl font-primary font-bold mb-2">Welcome Back,</h2>
                <p className="text-slate-400 font-medium">Please select an active verification session to proceed.</p>
              </div>
            )}
@@ -211,7 +211,7 @@ const HomePage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-xl mx-auto px-6 -mt-12 pb-20 space-y-6 relative z-20">
+      <main className="max-w-xl mx-auto px-4 sm:px-6 -mt-10 sm:-mt-12 pb-20 space-y-5 sm:space-y-6 relative z-20">
         
         {/* Session Card (Student Info) */}
         {!urlSessionId ? (
@@ -252,8 +252,8 @@ const HomePage = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
             
             {/* Student Info Plate */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-               <div className="flex items-center gap-5 w-full">
+            <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
+               <div className="flex items-center gap-4 w-full">
                   <div className="w-14 h-14 bg-indigo-50 border border-indigo-100 rounded-[1.2rem] flex items-center justify-center font-primary font-bold text-indigo-600 text-xl shadow-inner">
                     {studentInfo.name.charAt(0)}
                   </div>
@@ -262,12 +262,12 @@ const HomePage = () => {
                     <h3 className="text-lg font-primary font-bold text-slate-800 truncate">{studentInfo.name}</h3>
                   </div>
                </div>
-               <div className="flex gap-3 w-full md:w-auto">
-                 <div className="flex-1 md:w-28 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+               <div className="flex gap-3 w-full">
+                 <div className="flex-1 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                     <p className="text-[9px] text-slate-400 font-primary font-bold uppercase mb-0.5">Roll No</p>
                     <p className="text-sm font-primary font-bold text-slate-700">{studentInfo.rollNo}</p>
                  </div>
-                 <div className="flex-1 md:w-28 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                 <div className="flex-1 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                     <p className="text-[9px] text-slate-400 font-primary font-bold uppercase mb-0.5">Class</p>
                     <p className="text-sm font-primary font-bold text-slate-700">{studentInfo.className}</p>
                  </div>
@@ -275,13 +275,13 @@ const HomePage = () => {
             </div>
 
             {/* Attendance Form */}
-            <form onSubmit={handleSubmit} className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-xl space-y-8 relative overflow-hidden">
+            <form onSubmit={handleSubmit} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 border border-slate-200 shadow-xl space-y-6 sm:space-y-8 relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 -z-0"></div>
                
                <div className="relative z-10">
-                 <div className="flex items-center justify-between mb-8">
+                 <div className="flex items-center justify-between mb-4 sm:mb-8">
                     <div>
-                       <h3 className="text-xl font-primary font-bold text-slate-800">Post Attendance</h3>
+                       <h3 className="text-lg sm:text-xl font-primary font-bold text-slate-800">Post Attendance</h3>
                        <p className="text-xs text-slate-500 font-medium">Geo-fence verification required</p>
                     </div>
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${

@@ -35,7 +35,7 @@ const App = () => {
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/portal/admin" element={<AdminLogin />} />
-          <Route path="/portal/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/portal/admin/dashboard" element={localStorage.getItem("admin_email") ? <AdminDashboard /> : <Navigate to="/portal/admin" />} />
           <Route path="/feedback" element={<FeedbackPage />} />
 
         </Routes>

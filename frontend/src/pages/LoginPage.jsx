@@ -48,19 +48,19 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row font-['DM_Sans'] bg-white">
+    <div className="min-h-screen w-full flex flex-col md:flex-row font-['DM_Sans'] bg-white overflow-x-hidden">
 
       {/* Left Section: Form */}
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-8 md:p-16 lg:p-24">
+      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-6 sm:p-10 md:p-16 lg:p-24 min-h-screen md:min-h-0">
         <div className="w-full max-w-[400px]">
 
           {/* Logo */}
-          <div className=" items-center gap-4 mb-12">
+          <div className="items-center gap-4 mb-8 sm:mb-12">
 
-            <span className="font-['Space_Grotesk'] font-bold text-6xl tracking-tight text-[#0f172a]">
+            <span className="font-['Space_Grotesk'] font-bold text-4xl sm:text-5xl md:text-6xl tracking-tight text-[#0f172a]">
               Spectrum
             </span>
-            <p className="text-slate-500 text-sm leading-relaxed">
+            <p className="text-slate-500 text-sm leading-relaxed mt-1">
               INSPIRE - INNOVATE - INTERACT
             </p>
           </div>

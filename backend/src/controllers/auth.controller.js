@@ -158,4 +158,54 @@ const getAttendance = async (req, res) => {
     }
 };
 
-export { login, signup, logout, checkAuth, adminLogin, getUsers, getDistinctAttributes, getAttendance };
+const createUser = async (req, res) => {
+    try {
+        const { rollNo, password, name, className, year, department } = req.body;
+        
+        // Ensure only admins can access this (already handled by middleware, but good to be safe)
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Forbidden - Administrator access required" });
+        }
+
+        if (!rollNo || !password || !name || !className || !year || !department) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const existingUser = await User.findOne({ rollNo: rollNo.toUpperCase() });
+        if (existingUser) {
+            return res.status(400).json({ message: "Roll number already exists" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = new User({
+            rollNo: rollNo.toUpperCase(),
+            password: hashedPassword,
+            name,
+            className,
+            year,
+            department
+        });
+
+        await newUser.save();
+
+        return res.status(201).json({
+            success: true,
+            message: "User created successfully",
+            data: {
+                _id: newUser._id,
+                name: newUser.name,
+                rollNo: newUser.rollNo,
+                className: newUser.className,
+                year: newUser.year,
+                department: newUser.department
+            }
+        });
+    } catch (error) {
+        console.error("Create User error:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+export { login, signup, logout, checkAuth, adminLogin, getUsers, getDistinctAttributes, getAttendance, createUser };

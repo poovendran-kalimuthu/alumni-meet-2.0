@@ -38,9 +38,9 @@ const SignupPage = () => {
     }
 
     return (
-        <div className="min-h-screen grid lg:grid-cols-2 font-secondary bg-white">
+        <div className="min-h-screen grid lg:grid-cols-2 font-secondary bg-white overflow-x-hidden">
             {/* Left Side */}
-            <div className="flex flex-col justify-center items-center p-6 sm:p-12">
+            <div className="flex flex-col justify-center items-center p-5 sm:p-8 sm:p-12 min-h-screen lg:min-h-0">
                 <div className="w-full max-w-md space-y-8">
                     <div className="text-center mb-8">
                         <div className="flex flex-col items-center gap-2 group">
@@ -55,7 +55,7 @@ const SignupPage = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="form-control">
                                 <label className="label py-1">
                                     <span className="label-text font-bold text-xs uppercase tracking-wider text-slate-400">Roll Number</span>
@@ -93,7 +93,7 @@ const SignupPage = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="form-control">
                                 <label className="label py-1">
                                     <span className="label-text font-bold text-xs uppercase tracking-wider text-slate-400">Class Label</span>
