@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { axiosInstance } from "../lib/axios";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
@@ -351,6 +351,15 @@ const AdminDashboard = () => {
     doc.setFontSize(12);
     doc.text(`Session: ${selectedSession.name}`, 105, 30, { align: "center" });
     doc.text(`Location: ${selectedSession.locationName} | Date: ${selectedSession.dateTime}`, 105, 37, { align: "center" });
+    
+    // Add Filter Info to PDF
+    let filterText = "";
+    if (yearFilter !== "all" || deptFilter !== "all" || statusFilter !== "all") {
+      filterText = `Filters: ${yearFilter !== 'all' ? 'Year: ' + yearFilter : ''} ${deptFilter !== 'all' ? ' | Dept: ' + deptFilter : ''} ${statusFilter !== 'all' ? ' | Status: ' + statusFilter : ''}`;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "italic");
+      doc.text(filterText.trim().replace(/^\| | \|$/, ""), 105, 43, { align: "center" });
+    }
     
     const tableColumn = ["Roll No", "Student Name", "Class", "Status", "Verified At"];
     const tableRows = filteredStudents.map(s => {
@@ -866,6 +875,32 @@ const AdminDashboard = () => {
                         <button onClick={() => setStatusFilter("all")} className={`px-6 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>All</button>
                         <button onClick={() => setStatusFilter("present")} className={`px-6 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${statusFilter === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-emerald-600'}`}>Present</button>
                         <button onClick={() => setStatusFilter("absent")} className={`px-6 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${statusFilter === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-slate-400 hover:text-rose-600'}`}>Absent</button>
+                      </div>
+
+                      {/* Year Filter */}
+                      <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-[1.5rem] border border-slate-200">
+                        <span className="pl-4 text-[8px] font-bold text-slate-400 uppercase tracking-widest">Year:</span>
+                        <select 
+                          value={yearFilter} 
+                          onChange={(e) => setYearFilter(e.target.value)}
+                          className="bg-transparent text-[9px] font-bold uppercase tracking-widest outline-none pr-4 text-slate-900 cursor-pointer"
+                        >
+                          <option value="all">All Generations</option>
+                          {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Dept Filter */}
+                      <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-[1.5rem] border border-slate-200">
+                        <span className="pl-4 text-[8px] font-bold text-slate-400 uppercase tracking-widest">Dept:</span>
+                        <select 
+                          value={deptFilter} 
+                          onChange={(e) => setDeptFilter(e.target.value)}
+                          className="bg-transparent text-[9px] font-bold uppercase tracking-widest outline-none pr-4 text-slate-900 cursor-pointer"
+                        >
+                          <option value="all">All Clusters</option>
+                          {availableDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
                       </div>
                       <button 
                         onClick={() => setIsCreateModalOpen(true)}
