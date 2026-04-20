@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { axiosInstance } from "../lib/axios";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
@@ -49,6 +49,12 @@ const AdminDashboard = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkCommon, setBulkCommon] = useState({ className: "", year: "1st Year", department: "CSE", password: "" });
+  const [bulkRawText, setBulkRawText] = useState("");
+  const [bulkPreview, setBulkPreview] = useState([]); // [{rollNo, name}]
+  const [bulkResult, setBulkResult] = useState(null); // {created, skipped}
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newUserFormData, setNewUserFormData] = useState({
     rollNo: "",
@@ -144,6 +150,54 @@ const AdminDashboard = () => {
       toast.error(err.response?.data?.message || "Failed to create user");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const parseBulkText = (text) => {
+    return text.split("\n")
+      .map(line => line.trim()).filter(Boolean)
+      .map(line => {
+        const parts = line.split(",").map(p => p.trim());
+        return { rollNo: parts[0] || "", name: parts.slice(1).join(",").trim() || "" };
+      })
+      .filter(r => r.rollNo || r.name);
+  };
+
+  const handleBulkFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result;
+      setBulkRawText(text);
+      setBulkPreview(parseBulkText(text));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+    if (bulkPreview.length === 0) return toast.error("No users parsed. Check CSV format.");
+    if (!bulkCommon.password || bulkCommon.password.length < 6) return toast.error("Password must be at least 6 characters");
+    if (!bulkCommon.className || !bulkCommon.year || !bulkCommon.department) return toast.error("Class, Year and Department are required");
+    setIsBulkSaving(true);
+    try {
+      const res = await axiosInstance.post("/auth/users/bulk", {
+        users: bulkPreview,
+        password: bulkCommon.password,
+        className: bulkCommon.className,
+        year: bulkCommon.year,
+        department: bulkCommon.department
+      });
+      if (res.data.success) {
+        setBulkResult(res.data.data);
+        toast.success(res.data.message);
+        loadUsers();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Bulk upload failed");
+    } finally {
+      setIsBulkSaving(false);
     }
   };
 
@@ -773,6 +827,13 @@ const AdminDashboard = () => {
                         className="xl:ml-4 flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-3xl text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-slate-800 transition-all active:scale-95 shadow-2xl shadow-slate-900/20"
                       >
                         <UserPlus size={16} /> Deploy New Record
+                       </button>
+                       <button 
+                         onClick={() => { setIsBulkModalOpen(true); setBulkResult(null); setBulkPreview([]); setBulkRawText(""); }}
+                         className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-3xl text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-indigo-700 transition-all active:scale-95 shadow-2xl shadow-indigo-600/20"
+                       >
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                         Bulk Upload
                       </button>
                     </div>
                   </div>
@@ -1181,6 +1242,161 @@ const AdminDashboard = () => {
                   </button>
                 </div>
              </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[3rem] w-full max-w-3xl shadow-2xl animate-in zoom-in-95 border border-slate-100 relative overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -mr-32 -mt-32 -z-0 blur-3xl opacity-60" />
+
+            {/* Modal Header */}
+            <div className="p-8 sm:p-10 flex items-center justify-between border-b border-slate-100 relative z-10 shrink-0">
+              <div className="flex items-center gap-5">
+                <div className="w-16 h-16 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-600/30">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-heading font-bold text-slate-900 tracking-tight">Bulk User Upload</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.25em] mt-1">Import registry nodes from CSV</p>
+                </div>
+              </div>
+              <button onClick={() => setIsBulkModalOpen(false)} className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+              {bulkResult ? (
+                /* Result View */
+                <div className="p-8 sm:p-10 space-y-8">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 text-center">
+                      <p className="text-4xl font-heading font-bold text-emerald-600">{bulkResult.created.length}</p>
+                      <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Created</p>
+                    </div>
+                    <div className="bg-rose-50 border border-rose-100 rounded-3xl p-6 text-center">
+                      <p className="text-4xl font-heading font-bold text-rose-500">{bulkResult.skipped.length}</p>
+                      <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mt-1">Skipped</p>
+                    </div>
+                  </div>
+
+                  {bulkResult.skipped.length > 0 && (
+                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Skipped Records</p>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {bulkResult.skipped.map((s, i) => (
+                          <div key={i} className="flex justify-between text-xs font-medium text-slate-600">
+                            <span className="font-bold">{s.rollNo || "â€”"}</span>
+                            <span className="text-rose-400">{s.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-4">
+                    <button onClick={() => { setBulkResult(null); setBulkPreview([]); setBulkRawText(""); }} className="flex-1 py-4 bg-slate-50 text-slate-600 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-colors">Upload More</button>
+                    <button onClick={() => setIsBulkModalOpen(false)} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">Close</button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleBulkSubmit} className="p-8 sm:p-10 space-y-8">
+                  {/* Step 1: Common Fields */}
+                  <div>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em] mb-4">Step 1 â€” Set Common Fields</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Class Label</label>
+                        <input required type="text" placeholder="e.g. CSE-A" value={bulkCommon.className}
+                          onChange={e => setBulkCommon({...bulkCommon, className: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 font-bold text-slate-900 text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Department</label>
+                        <select required value={bulkCommon.department} onChange={e => setBulkCommon({...bulkCommon, department: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 font-bold text-slate-900 text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none">
+                          {['CSE','IT','ECE','EEE','MECH','CIVIL','AI&DS','ACT'].map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Year</label>
+                        <select required value={bulkCommon.year} onChange={e => setBulkCommon({...bulkCommon, year: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 font-bold text-slate-900 text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none">
+                          {['1st Year','2nd Year','3rd Year','4th Year','Alumni'].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Common Password</label>
+                        <input required type="password" placeholder="Min 6 chars" value={bulkCommon.password}
+                          onChange={e => setBulkCommon({...bulkCommon, password: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 font-bold text-slate-900 text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: CSV Input */}
+                  <div>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em] mb-4">Step 2 â€” Upload or Paste CSV <span className="text-slate-400 normal-case tracking-normal font-medium">(format: RollNo, Name)</span></p>
+                    <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all group">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 group-hover:text-indigo-400 mb-2 transition-colors"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <p className="text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">Click to upload CSV file</p>
+                      <input type="file" accept=".csv,.txt" className="hidden" onChange={handleBulkFileUpload} />
+                    </label>
+                    <div className="relative mt-4">
+                      <p className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-4">â€” or paste below â€”</p>
+                      <textarea
+                        rows={5}
+                        value={bulkRawText}
+                        onChange={e => { setBulkRawText(e.target.value); setBulkPreview(parseBulkText(e.target.value)); }}
+                        placeholder={"21CS001, John Doe\n21CS002, Jane Smith\n21CS003, Alex Kumar"}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 text-xs font-mono text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Step 3: Preview */}
+                  {bulkPreview.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em]">Step 3 â€” Preview</p>
+                        <span className="px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-bold rounded-xl">{bulkPreview.length} records</span>
+                      </div>
+                      <div className="bg-slate-50 rounded-3xl border border-slate-100 overflow-hidden max-h-52 overflow-y-auto">
+                        <table className="w-full text-left">
+                          <thead className="bg-white border-b border-slate-100 sticky top-0">
+                            <tr>
+                              <th className="px-5 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">#</th>
+                              <th className="px-5 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Roll No</th>
+                              <th className="px-5 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Name</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {bulkPreview.map((u, i) => (
+                              <tr key={i} className={!u.rollNo || !u.name ? 'bg-rose-50' : ''}>
+                                <td className="px-5 py-3 text-xs text-slate-400 font-bold">{i + 1}</td>
+                                <td className="px-5 py-3 text-xs font-bold text-slate-700">{u.rollNo || <span className="text-rose-400">Missing</span>}</td>
+                                <td className="px-5 py-3 text-xs text-slate-600">{u.name || <span className="text-rose-400">Missing</span>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-4 pt-2">
+                    <button type="button" onClick={() => setIsBulkModalOpen(false)} className="flex-1 py-4 bg-slate-50 text-slate-500 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-colors">Cancel</button>
+                    <button type="submit" disabled={isBulkSaving || bulkPreview.length === 0} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-2xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isBulkSaving ? "Uploading..." : `Upload ${bulkPreview.length} Users`}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -208,4 +208,53 @@ const createUser = async (req, res) => {
     }
 };
 
-export { login, signup, logout, checkAuth, adminLogin, getUsers, getDistinctAttributes, getAttendance, createUser };
+
+const bulkCreateUsers = async (req, res) => {
+    try {
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Forbidden - Administrator access required" });
+        }
+
+        const { users, password, className, year, department } = req.body;
+
+        if (!Array.isArray(users) || users.length === 0) {
+            return res.status(400).json({ message: "users array is required and must not be empty" });
+        }
+        if (!password || !className || !year || !department) {
+            return res.status(400).json({ message: "password, className, year and department are required" });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const created = [];
+        const skipped = [];
+
+        for (const u of users) {
+            const rollNo = u.rollNo?.toString().toUpperCase().trim();
+            const name = u.name?.toString().trim();
+            if (!rollNo || !name) { skipped.push({ rollNo, reason: "Missing rollNo or name" }); continue; }
+
+            const exists = await User.findOne({ rollNo });
+            if (exists) { skipped.push({ rollNo, reason: "Already exists" }); continue; }
+
+            const newUser = new User({ rollNo, name, password: hashedPassword, className, year, department });
+            await newUser.save();
+            created.push({ _id: newUser._id, rollNo: newUser.rollNo, name: newUser.name });
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: `${created.length} users created, ${skipped.length} skipped`,
+            data: { created, skipped }
+        });
+    } catch (error) {
+        console.error("Bulk create error:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+export { login, signup, logout, checkAuth, adminLogin, getUsers, getDistinctAttributes, getAttendance, createUser, bulkCreateUsers };
